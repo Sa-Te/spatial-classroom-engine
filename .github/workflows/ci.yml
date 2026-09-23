@@ -54,15 +54,20 @@ jobs:
         cd services/app-go && go vet ./...
         pnpm --filter web typecheck
         
-    # Skip linting for now due to configuration issues
-    # - name: Lint
-    #   run: |
-    #     pnpm --filter web lint
-    #     cd services/app-go && staticcheck ./...
+    # Run linting separately to handle potential interactive setup
+    - name: Setup ESLint config if needed
+      run: |
+        cd apps/web
+        if [ ! -f .eslintrc.json ]; then
+          echo '{"extends": "next/core-web-vitals"}' > .eslintrc.json
+        fi
+        cd ../..
         
-    - name: Go static analysis
+    - name: Lint
       run: |
         cd services/app-go && staticcheck ./...
+        # Skip web linting for now due to configuration issues
+        # pnpm --filter web lint
         
   test:
     needs: check
