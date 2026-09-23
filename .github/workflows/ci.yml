@@ -21,11 +21,28 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '22'
-        cache: 'npm'
         
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 8.15.3
+        
+    - name: Get pnpm store directory
+      id: pnpm-cache
+      run: |
+        echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+        
+    - name: Setup pnpm cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-store-
+          
     - name: Install dependencies
       run: |
-        npm ci
+        pnpm install
         cd services/app-go && go mod download
         
     - name: Format check
@@ -35,9 +52,11 @@ jobs:
     - name: Typecheck
       run: |
         cd services/app-go && go vet ./...
+        pnpm --filter web typecheck
         
-    - name: Static analysis
+    - name: Lint
       run: |
+        pnpm --filter web lint
         cd services/app-go && staticcheck ./...
         
   test:
@@ -67,16 +86,34 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '22'
-        cache: 'npm'
         
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 8.15.3
+        
+    - name: Get pnpm store directory
+      id: pnpm-cache
+      run: |
+        echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+        
+    - name: Setup pnpm cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-store-
+          
     - name: Install dependencies
       run: |
-        npm ci
+        pnpm install
         cd services/app-go && go mod download
         
     - name: Run unit tests
       run: |
         cd services/app-go && go test ./...
+        pnpm --filter web test
         
     - name: Run integration tests
       env:
@@ -86,7 +123,7 @@ jobs:
         
     - name: Run build
       run: |
-        npm run build
+        pnpm --filter web build
         cd services/app-go && go build -o app-go-binary ./cmd/api
 
   coverage:
@@ -104,11 +141,28 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '22'
-        cache: 'npm'
         
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 8.15.3
+        
+    - name: Get pnpm store directory
+      id: pnpm-cache
+      run: |
+        echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+        
+    - name: Setup pnpm cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-store-
+          
     - name: Install dependencies
       run: |
-        npm ci
+        pnpm install
         cd services/app-go && go mod download
         
     - name: Run coverage checks
