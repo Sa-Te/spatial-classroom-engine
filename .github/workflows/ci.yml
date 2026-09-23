@@ -54,10 +54,14 @@ jobs:
         cd services/app-go && go vet ./...
         pnpm --filter web typecheck
         
-    - name: Lint
+    # Skip linting for now due to configuration issues
+    # - name: Lint
+    #   run: |
+    #     pnpm --filter web lint
+    #     cd services/app-go && staticcheck ./...
+        
+    - name: Go static analysis
       run: |
-        echo "Skipping lint for now due to configuration issues"
-        # pnpm --filter web lint
         cd services/app-go && staticcheck ./...
         
   test:
