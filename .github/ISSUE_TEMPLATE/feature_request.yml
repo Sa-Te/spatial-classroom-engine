@@ -1,0 +1,32 @@
+name: Feature request
+description: Propose a user-visible improvement within the project roadmap.
+title: "feat: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the learner, teacher, contributor, or operator problem.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed outcome
+      description: Describe the smallest user-visible outcome, not a prescribed implementation.
+    validations:
+      required: true
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Constraints
+      options:
+        - label: This preserves mock mode and a semantic 2D fallback.
+          required: true
+        - label: This does not require paid credentials for the basic workflow.
+          required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

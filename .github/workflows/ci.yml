@@ -1,0 +1,139 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd services/app-go && go mod download
+        
+    - name: Format check
+      run: |
+        cd services/app-go && go fmt ./...
+        
+    - name: Typecheck
+      run: |
+        cd services/app-go && go vet ./...
+        
+    - name: Static analysis
+      run: |
+        cd services/app-go && staticcheck ./...
+        
+  test:
+    needs: check
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: spatial_classroom
+          POSTGRES_USER: app_runtime
+          POSTGRES_PASSWORD: change-me
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd services/app-go && go mod download
+        
+    - name: Run unit tests
+      run: |
+        cd services/app-go && go test ./...
+        
+    - name: Run integration tests
+      env:
+        DATABASE_URL: postgresql://app_runtime:change-me@localhost:5432/spatial_classroom?sslmode=disable
+      run: |
+        cd services/app-go && go test -v -run Integration ./...
+        
+    - name: Run build
+      run: |
+        npm run build
+        cd services/app-go && go build -o app-go-binary ./cmd/api
+
+  coverage:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd services/app-go && go mod download
+        
+    - name: Run coverage checks
+      run: |
+        cd services/app-go && go test -coverprofile=coverage.out ./...
+        go tool cover -func=coverage.out
+
+  secret-scanning:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Secret Scanning
+      uses: github/super-linter/slim@v4
+      env:
+        VALIDATE_ALL_CODEBASE: false
+        DEFAULT_BRANCH: main
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependency-review:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Dependency Review
+      uses: actions/dependency-review-action@v4
+      with:
+        fail-on-severity: high

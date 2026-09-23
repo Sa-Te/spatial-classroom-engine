@@ -1,0 +1,37 @@
+name: Bug report
+description: Report reproducible behaviour that differs from the documented expectation.
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Do not include credentials, learner material, transcripts, or private data. Report security issues privately via SECURITY.md."
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: List the smallest reproducible steps, commands, and safe configuration.
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, browser or tool versions, commit, and mock/provider mode.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Safe logs or screenshots
+      description: Redact all secrets and personal data.
