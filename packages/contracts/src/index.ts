@@ -12,3 +12,11 @@ export {
   type Source,
   type TopicRef,
 } from './evidence.js';
+export {
+  AudienceProfileSchema,
+  LessonPlanSchema,
+  SceneBriefSchema,
+  type AudienceProfile,
+  type LessonPlan,
+  type SceneBrief,
+} from './lesson.js';
