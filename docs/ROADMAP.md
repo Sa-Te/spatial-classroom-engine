@@ -82,6 +82,8 @@ Amended 2026-11-27 after T1: T1 shipped as its own pull request (`3e977bd`), not
 
 `LessonPlan` gains `topic: TopicRef` at T6 under ADR 0016, together with the discriminated-union change to `Cue.params`. Until T6 the current shape — `evidencePacketId` and no `topic` — is not final.
 
+T6B follows T7 on purpose. The discriminated union for `Cue.params` needs all nine core parameter schemas to be exhaustive: camera and teacher land in T6, scene, light and learner in T7. T6B then carries ADR 0016, the union, `LessonPlan.topic: TopicRef`, and the cue-sheet test updates. This ordering is deliberate; do not renumber it to look tidy.
+
 **In scope**
 - Zod schemas and inferred types in `packages/contracts` for `EvidencePacket`, `LessonPlan`, `SceneSpec`, `CueSheet`, `PrimitiveId`, and API error shapes. [DERIVED: docs/TECHNICAL_DESIGN.md §5, §6, §7, §8, §9, §14]
 - Pure `packages/timeline`: `Clock`, `resolveTimeline`, `Timeline`, `TimelineEntry`, ordering rules, and drift reporting. [DERIVED: docs/TECHNICAL_DESIGN.md §10; docs/adr/0003-pure-timeline-resolver.md]

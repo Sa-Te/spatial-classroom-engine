@@ -321,16 +321,16 @@ In P1 the schema types `primitive` as a string; Q1 narrows it to the closed nine
 
 ## 9  Primitive registry
 
-The closed set the AI may compose from. Each entry has a parameter schema, a validator, an executor, and a golden test. An unknown primitive is rejected — never approximated.
+The closed set the AI may compose from. Each entry has a parameter schema, a validator, an executor, and a golden test. An unknown primitive is rejected — never approximated. In P1 the registry covers the nine core ids in the frozen decisions: their schemas and validators ship, their executors and golden tests land with the player in P3, and the deferred ids are absent from `PrimitiveId` rather than present and unvalidated.
 
 | **Track** | **Primitive** | **Parameters** | **Validation** |
 | --- | --- | --- | --- |
-| camera | lockOff | framing, sunSide | framing in enum; sunSide consistent within scene |
+| camera | lockOff | framing | framing in enum; sunSide is derived from the key light (Q5), not authored |
 | camera | pushIn | from, to, durationMs | durationMs > 0; ≤ 4000 |
 | camera | orbitArc | degrees, durationMs, target | degrees ≠ 0; target is an anchor |
 | camera | diveThrough | fromAnchor, toAnchor, swapObjectId | feature-flagged; reference implementation only |
 | camera | pullOut | to, durationMs | durationMs > 0 |
-| camera | cut | to, framing | instantaneous; no duration |
+| camera | cut | framing | instantaneous; no duration; `to` deferred to P3 (Q7) |
 | teacher | lookAt | target | anchor exists; must precede point for the same target |
 | teacher | point | hand, target | anchor exists |
 | teacher | gesture | kind, intensity | kind in enum |
@@ -343,7 +343,7 @@ The closed set the AI may compose from. Each entry has a parameter schema, a val
 | scene | animateParam | parameter, from, to, durationMs | both in range |
 | scene | freeze | target | — |
 | scene | label | text, atAnchor, style | text ≤ 40 chars |
-| light | keyFromSun | sunElevationDeg | 0–90 |
+| light | keyFromSun | sunElevationDeg | 1–90 (Q11) |
 | board | showStill | imageId, region? | image exists |
 | board | highlightRegion | x, y, w, h | inside bounds |
 | learner | enableGrab | objectId, parameter | parameter declared manipulable |
