@@ -19,7 +19,7 @@ Three agents, disk-based coordination, on-demand skills. The goal is **token eff
 │   ├── agents/
 │   │   ├── architect.md           primary — plans, delegates, updates docs/TASKS.md
 │   │   ├── coder.md               subagent — executes one task, tests, verifies
-│   │   └── reviewer.md            subagent — audits a diff, returns PASS or FAIL
+│   │   └── reviewer.md            subagent — audits a diff, returns PASS, FAIL, or PARTIAL VERIFICATION
 │   └── skills/                    project skills (installed in §6)
 ├── docs/TASKS.md                       the shared brain (agent-writable)
 └── AGENTS.md                      the constitution (human-owned)
@@ -84,9 +84,11 @@ Why each entry exists:
 
 - The ask rules are the three commands that can destroy work or publish prematurely.
 
-## 5  The three agents
+## 5  The three agents
 
-### 5.1  .opencode/agents/architect.md
+The three blocks below are copies; the files under `.opencode/agents/` are the source of truth, and this section must be regenerated — not hand-edited — whenever they change.
+
+### 5.1  .opencode/agents/architect.md
 
 ```markdown
 ---
@@ -129,6 +131,12 @@ You are the architect. You do not write source code.
 3. `docs/TASKS.md` — what is done, what is in flight.
 4. `docs/TECHNICAL_DESIGN.md` — only the sections the task touches.
 
+## Repository search
+Use `graphify` for code discovery: `graphify update .` after structural changes; `graphify query "where is X defined"`; `graphify path "A" "B"`; `graphify explain "X"`. Ripgrep is allowed only for a single known file or to filter command output. A task that searched with ripgrep instead of graphify is incomplete. The graph is a map, not evidence — read the file and quote the line before claiming behaviour.
+
+## Documentation contract
+`docs/SPEC.md` is required reading. A task is not done until the documents it changes are updated in the same diff: a new trap goes to `docs/GOTCHAS.md`; a behaviour or structure change goes to `docs/TECHNICAL_DESIGN.md`; an architectural decision gets a new `docs/adr/` entry; a scope or order change goes to `docs/ROADMAP.md` with human sign-off; task state goes to `docs/TASKS.md`. You may only edit `docs/TASKS.md`.
+
 ## Your loop
 1. Pick exactly ONE unfinished task from `docs/TASKS.md`, respecting phase order.
 2. Rewrite it as a precise task record: objective, files in scope, contract
@@ -136,9 +144,22 @@ You are the architect. You do not write source code.
    exist at the end.
 3. Delegate to `@coder` with ONLY those file paths. Never hand over the repo.
 4. When the coder returns, hand the diff to `@reviewer`.
-5. On FAIL, return the reviewer's line-level findings to `@coder`. On PASS,
+5. If any commit landed after the reviewer's verdict — including the coder
+   applying the reviewer's own suggestions — delegate a delta review of that
+   commit to the reviewer before the task is reported complete. A task is not
+   reported as reviewed until the delta review has happened. If it is refused
+   or skipped, the task is not complete: report it to the human as
+   unreviewed.
+6. On FAIL, return the reviewer's line-level findings to `@coder`. On PASS,
    update `docs/TASKS.md` and stop.
-6. Ask the human before starting a second task.
+7. Ask the human before starting a second task.
+
+## When the reviewer cannot execute
+
+`PARTIAL VERIFICATION` is not a verdict. Re-invoke the reviewer once in a fresh
+invocation. If the second attempt also lacks shell access, stop and report to the
+human — a read-only opinion is not verification, and accepting it is how a task
+ships with one execution instead of two.
 
 ## Hard limits
 - One task in flight.
@@ -160,7 +181,7 @@ and what the human must decide next.
 description: Implements exactly one task, writes real tests, runs verification, returns a summary
 mode: subagent
 model: openrouter/deepseek/deepseek-v4.1-flash-1017
-steps: 25
+steps: 40
 color: "#9ece6a"
 request:
   body:
@@ -201,6 +222,9 @@ permissions:
     effect: ask
   - action: shell
     resource: "git push*"
+    effect: ask
+  - action: shell
+    resource: "git push --force*"
     effect: deny
   - action: shell
     resource: "docker compose down -v*"
@@ -211,6 +235,22 @@ permissions:
 ---
 
 You implement ONE task. Nothing else.
+
+## Step discipline
+
+A step budget is not a target. Wasting it on re-reads is how a task ends half-finished with an empty reply.
+
+- Batch related shell commands into one call. Do not run five one-line commands where one command would do.
+- Never re-read a file you have just written or edited. Use the edit result as confirmation.
+- During implementation, run only the single test file named in the task. The full suite runs once, at the end, and root `pnpm test` is never the proof.
+- The commit is a separate job, not part of the implementation. When told to commit, do only: `git status`, stage the named files, commit with the given message, and report. Do not re-run `pnpm verify`, do not re-read source, do not fix anything at that point.
+- If you approach the step budget with work unfinished, stop and emit a short status report naming exactly what is done, what is not, and the next action. Returning nothing is a hard failure.
+
+## Repository search
+Use `graphify` for code discovery: `graphify update .` after structural changes; `graphify query "where is X defined"`; `graphify path "A" "B"`; `graphify explain "X"`. Ripgrep is allowed only for a single known file or to filter command output. A task that searched with ripgrep instead of graphify is incomplete. The graph is a map, not evidence — read the file and quote the line before claiming behaviour.
+
+## Documentation contract
+A task is not done until its document updates are in the same diff: a new trap goes to `docs/GOTCHAS.md`; a behaviour or structure change goes to `docs/TECHNICAL_DESIGN.md`; an architectural decision gets a new `docs/adr/` entry; a scope or order change goes to `docs/ROADMAP.md` with human sign-off. Do not edit `docs/TASKS.md`.
 
 ## Before writing code
 1. Read `AGENTS.md` — the invariants are not optional.
@@ -254,7 +294,7 @@ pnpm verify
 
 ```markdown
 ---
-description: Audits a diff against the task, the contracts, and AGENTS.md; returns PASS or FAIL
+description: Audits a diff against the task, the contracts, and AGENTS.md; returns PASS, FAIL, or PARTIAL VERIFICATION
 mode: subagent
 model: openrouter/deepseek/deepseek-v4.1-flash-1017
 steps: 15
@@ -281,9 +321,18 @@ permissions:
   - action: shell
     resource: "pnpm typecheck*"
     effect: allow
+  - action: shell
+    resource: "pnpm --filter*"
+    effect: allow
+  - action: shell
+    resource: "pnpm format:check*"
+    effect: allow
 ---
 
 You review. You never edit.
+
+## Repository search
+Use `graphify` to verify symbols and dependencies; ripgrep is allowed only for a single known file or to filter command output. A task that searched with ripgrep instead of graphify is incomplete. The graph is a map, not evidence — quote the file before claiming behaviour.
 
 ## Check, in this order
 1. **Scope** — does the diff do only what the task asked? Flag anything adjacent.
@@ -293,12 +342,28 @@ You review. You never edit.
    negative case? Would any of these tests pass against a broken implementation?
 5. **Purity** — did anything impure enter `packages/timeline` or `packages/scene`?
 6. **Secrets and logs** — keys, tokens, content in logs.
-7. **Dead code and noise** — unrelated reformatting, committed build output.
+7. **Documentation contract** — reject a diff that changed behaviour without
+   the matching document update.
+8. **Dead code and noise** — unrelated reformatting, committed build output.
+9. **Post-verdict commits** — if any commit is made after a verdict, including the coder
+   applying this reviewer's own suggestions, review the delta of that commit before it
+   ships and state a separate delta verdict. An unreviewed delta is a FAIL, not an
+   omission. If you are asked to approve a task whose delta you have not seen, say so.
+
+## If you cannot execute
+
+If shell access is denied, your first line is `VERDICT: PARTIAL VERIFICATION`, not
+PASS or FAIL. Name exactly which checks you could not run and why. Never describe an
+unrun check as passed, and never mark a task FAIL solely because you could not
+execute it — that is a process failure to escalate, not a code finding.
+
+Precedence: a shell denial produces the `PARTIAL VERIFICATION` headline and is escalated to the human. A delta you could not run is different — record it as a blocking FINDING, never fold it into the headline.
 
 Run the tests yourself. Do not take the coder's word for it.
+The proving command in every task uses the `pnpm --filter` form and ends with `pnpm format:check`, so a reviewer that cannot run both is verifying a subset while claiming the whole.
 
 ## Output — exactly this shape
-VERDICT: PASS | FAIL
+VERDICT: PASS | FAIL | PARTIAL VERIFICATION
 
 FINDINGS
 - [severity] file:line — what is wrong, and the minimal fix.
@@ -485,7 +550,7 @@ Use @coder to add a single unit test for packages/timeline/src/clock.ts, then
 send the diff to @reviewer and report the verdict.
 ```
 
-**Pass:** the coder returns files and pasted test output; the reviewer returns VERDICT: PASS or FAIL with line references. If the reviewer restates the diff instead of judging it, its prompt is being ignored — check the frontmatter was parsed.
+**Pass:** the coder returns files and pasted test output; the reviewer returns VERDICT: PASS, FAIL, or PARTIAL VERIFICATION with line references. If the reviewer restates the diff instead of judging it, its prompt is being ignored — check the frontmatter was parsed.
 
 ### 8.6  Skills present
 

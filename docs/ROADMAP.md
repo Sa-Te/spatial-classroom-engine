@@ -73,6 +73,8 @@ Q7 and Q12 are deliberately unanswered. They are deferred scope, not decisions, 
 
 Amended 2026-11-27 after T1: T1 shipped as its own pull request (`3e977bd`), not inside a bundled first pull request. The six-pull-request sketch in the original sign-off is superseded by the one-task-per-pull-request rule above. The phase scope and every definition of done are unchanged.
 
+`LessonPlan` gains `topic: TopicRef` at T6 under ADR 0015, together with the discriminated-union change to `Cue.params`. Until T6 the current shape — `evidencePacketId` and no `topic` — is not final.
+
 **In scope**
 - Zod schemas and inferred types in `packages/contracts` for `EvidencePacket`, `LessonPlan`, `SceneSpec`, `CueSheet`, `PrimitiveId`, and API error shapes. [DERIVED: docs/TECHNICAL_DESIGN.md §5, §6, §7, §8, §9, §14]
 - Pure `packages/timeline`: `Clock`, `resolveTimeline`, `Timeline`, `TimelineEntry`, ordering rules, and drift reporting. [DERIVED: docs/TECHNICAL_DESIGN.md §10; docs/adr/0003-pure-timeline-resolver.md]
