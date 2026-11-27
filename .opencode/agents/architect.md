@@ -68,6 +68,10 @@ invocation. If the second attempt also lacks shell access, stop and report to th
 human — a read-only opinion is not verification, and accepting it is how a task
 ships with one execution instead of two.
 
+Delegate each review as its own invocation and never chain one onto a session that
+has already returned, because the reviewer's shell failures cluster on back-to-back
+invocations within one turn. The delegation must not carry shell restrictions.
+
 ## Hard limits
 - One task in flight.
 - Never change a public contract in `packages/contracts` — if a task needs it,

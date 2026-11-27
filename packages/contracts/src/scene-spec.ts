@@ -26,9 +26,11 @@ export const LightSpecSchema = z
 export const ManipulableSchema = z
   .object({
     parameter: z.enum(['axisTiltDeg', 'orbitSpeed', 'sunElevationDeg']),
-    min: z.number(),
-    max: z.number(),
-    default: z.number(),
+    // Finite: z.number() alone admits ±Infinity, which would make a range
+    // declared "constrained" unbounded (AGENTS.md §1.7.6).
+    min: z.number().finite(),
+    max: z.number().finite(),
+    default: z.number().finite(),
     // Open string on purpose (T4-Q4): the design never states the unit of
     // orbitSpeed, so a closed enum here would invent a decision.
     unit: z.string().min(1),

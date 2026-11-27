@@ -365,13 +365,13 @@ docker compose start postgres
 
 ### 7.4  The reviewer's shell rules silently stopped applying in one session
 
-**SYMPTOM** Every command the reviewer ran returned `Permission denied: shell`, including `pnpm test` and `pnpm typecheck`, which are explicitly allowed. It is intermittent: it has cleared in a fresh session after one denial, and it has also survived two consecutive fresh invocations on the same task, which left a post-fix tree with no independent execution.
+**SYMPTOM** Every command the reviewer ran returned `Permission denied: shell`, including `pnpm test` and `pnpm typecheck`, which are explicitly allowed. It is intermittent and has struck four times across two tasks. The verdict then reported unrun checks, or read files statically and called itself PARTIAL.
 
-**CAUSE** Not established. No configuration changed: the same rules, read from disk, allow the same commands, and the identical commands succeeded immediately in a fresh reviewer session with no edit.
+**CAUSE** Not established, and three probes ruled out the obvious answers. Run standalone through `opencode run --agent reviewer`, both `git status` and `pnpm typecheck` are allowed. Run as a nested subagent, both are allowed too. The frontmatter is clean — no tabs, no trailing spaces, no duplicated keys — and `opencode debug agents` reproduces the file's rules in order. The failures cluster on back-to-back reviewer invocations within one parent turn, which is a pattern, not a demonstrated cause.
 
-**FIX** Treat it as a process failure, not a code finding. Re-invoke once in a fresh session. If the denial repeats, stop, report to the human, and do not describe the task as reviewed — CI still gives an independent execution of the suite, but an execution is not a review.
+**FIX** Treat it as a process failure, not a code finding. Delegate each review as its own invocation, never chained onto a session that has already returned. If a denial appears, re-invoke once in a fresh session; if it repeats, stop and report to the human — CI still gives an independent execution of the suite, but an execution is not a review.
 
-**NEVER** Widen permissions to "fix" it, and never read the denial as evidence about the diff. The rules were already correct.
+**NEVER** Widen the reviewer's permissions to "fix" it. Three probes showed the rules were already correct, and a wider allowlist would hide the real fault.
 
 ## 8  Process
 
