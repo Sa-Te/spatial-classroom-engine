@@ -27,7 +27,7 @@ The contract cannot encode a guess. Adding geometry later is additive, but it st
 
 ### Negative
 
-P3 must revisit this record, and a scene authored before P3 cannot carry geometry.
+P3 must add its own geometry ADR, and a scene authored before P3 cannot carry geometry.
 
 ### Revisit if
 

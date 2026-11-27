@@ -257,6 +257,8 @@ export interface LightSpec {
 
 Elevation is cue-owned: `light.keyFromSun` is the single authoring site for `sunElevationDeg`, and `LightSpec` carries identity only (T4-Q2, ADR 0015).
 
+What a learner's grab of `sunElevationDeg` does relative to the next `light.keyFromSun` cue is undecided: the cue sets the value, and whether a grab is an offset from it or a replacement is a P3 decision that the first executor must make explicit.
+
 ### 8.2  CueSheet — what happens, and when
 
 ```ts
