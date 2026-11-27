@@ -15,6 +15,7 @@ Phase definition of done: `docs/ROADMAP.md` P1 — `pnpm verify`, the named test
 ## Deferred housekeeping
 
 - `apps/web` runs `vitest run --passWithNoTests` with zero tests, which `AGENTS.md` §1.10.2 rejects as a test. Target: the P1 closing sweep (the planned sixth pull request), together with the first real web test. Why deferred: removing the flag while the app has no tests turns CI red for no benefit, and adding a web test is outside P1's contract scope.
+- `LessonPlan` has no `topic` field, so `TopicRef` cannot be imported by the lesson contracts. Resolved at T6 together with ADR 0015 (the discriminated-union change), so one ADR covers both. Why deferred: nothing consumes the link before T6, and two ADRs for one contract change is waste.
 
 ## Done
 
