@@ -62,11 +62,13 @@ PASS or FAIL. Name exactly which checks you could not run and why. Never describ
 unrun check as passed, and never mark a task FAIL solely because you could not
 execute it — that is a process failure to escalate, not a code finding.
 
+Precedence: a shell denial produces the `PARTIAL VERIFICATION` headline and is escalated to the human. A delta you could not run is different — record it as a blocking FINDING, never fold it into the headline.
+
 Run the tests yourself. Do not take the coder's word for it.
 The proving command in every task uses the `pnpm --filter` form and ends with `pnpm format:check`, so a reviewer that cannot run both is verifying a subset while claiming the whole.
 
 ## Output — exactly this shape
-VERDICT: PASS | FAIL
+VERDICT: PASS | FAIL | PARTIAL VERIFICATION
 
 FINDINGS
 - [severity] file:line — what is wrong, and the minimal fix.

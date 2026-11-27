@@ -55,7 +55,8 @@ Use `graphify` for code discovery: `graphify update .` after structural changes;
    applying the reviewer's own suggestions — delegate a delta review of that
    commit to the reviewer before the task is reported complete. A task is not
    reported as reviewed until the delta review has happened. If it is refused
-   or skipped, the report says so.
+   or skipped, the task is not complete: report it to the human as
+   unreviewed.
 6. On FAIL, return the reviewer's line-level findings to `@coder`. On PASS,
    update `docs/TASKS.md` and stop.
 7. Ask the human before starting a second task.

@@ -138,6 +138,8 @@ gh ssh-key add ~/.ssh/id_ed25519.pub --title "$(hostname)"    # upload the publi
 
 > **The SSH agent lives in one shell, not on the machine.** `eval "$(ssh-agent -s)"` exports `SSH_AUTH_SOCK` into the shell that ran it. Any separate process — an editor, a CI runner, an agent session — does not inherit it. A passphrase-protected key therefore cannot be unlocked there, and `ssh -T git@github.com` fails even though the key is registered. That is why HTTPS is the default here.
 
+> **If you keep SSH**, verification matrix rows 3 and 4 read differently: `ssh -T git@github.com` instead of `gh auth status`, and `git@github.com:…` instead of the HTTPS URL.
+
 ### 4.3  VERIFY
 
 ```bash
