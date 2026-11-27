@@ -1,0 +1,647 @@
+# TECHNICAL_DESIGN.md
+
+**Repository destination:** `/docs/TECHNICAL_DESIGN.md` — repository root; architecture, contracts, data model, and evaluations.
+
+**Companion documents:** [AGENTS.md](../AGENTS.md) — rules and invariants, [GOTCHAS.md](GOTCHAS.md) — known traps, [SETUP_AND_VERIFY.md](SETUP_AND_VERIFY.md) — machine setup and verification
+
+Changes to boundaries, contracts, coordinates, retention, provider topology, or evaluation gates require an update here **and** an ADR, in the same pull request.
+
+## 2  The one decision everything follows from
+
+*“**AI composes. A deterministic engine performs. The learner manipulates real parameters, not playback.**”*
+
+Three consequences, and every section below is downstream of them:
+
+1. **Timing is not generated.** A model chooses which primitive to use and which word to anchor it to. A pure function converts that into milliseconds.
+
+2. **Grounding happens before the lesson exists.** Research produces an immutable evidence packet; composing, directing, and live answering all read from it.
+
+3. **Interaction targets simulation state.** Grabbing the Earth changes an axis angle; shadows are recomputed from the light.
+
+## 3  Layered architecture
+
+```text
+┌──────────────────────────────────────────────────────────────────┐
+│ Browser                                                          │
+│  ├─ Semantic DOM shell (accessible, feature-complete)            │
+│  ├─ three.js scene graph  +  deterministic timeline player        │
+│  ├─ Camera director (closed vocabulary)                          │
+│  ├─ Webcam tile  +  in-browser hand / pose / noise detection      │
+│  ├─ Web Audio: TTS playback, visemes, noise meter                 │
+│  └─ Pointer + hand interaction on named parameters                │
+└───────────┬──────────────────────────────────┬───────────────────┘
+            │ HTTPS / SSE / JSON               │ (V2) WebRTC
+            ▼                                  ▼
+┌───────────────────────────────────┐   ┌──────────────────────┐
+│ apps/server — Fastify (TypeScript) │   │ (V2) LiveKit SFU     │
+│  modules/                          │   │  media + spatial     │
+│   ├ session      audience profile  │   └──────────────────────┘
+│   ├ research     → EvidencePacket  │
+│   ├ planner      → LessonPlan      │
+│   ├ composer     → SceneSpec[]     │
+│   ├ director     → CueSheet[]      │
+│   ├ validator    → Verdict         │
+│   ├ builder      → Lesson (ready)  │
+│   ├ tutor        → Answer          │
+│   ├ notes        → NoteArtifact    │
+│   ├ moderation   → LadderDecision  │
+│   └ cost         → ledger          │
+│  platform/  (the only place adapters live)                        │
+│   ├ llm/{mock, openai-compatible}                                 │
+│   ├ tts/{mock, edge}                                              │
+│   ├ stt/{browser, mock}                                           │
+│   ├ search/{mock, curated, searxng}                               │
+│   └ storage/{local, s3}                                           │
+└───────────┬──────────────────────────────────────────────────────┘
+            ▼
+      PostgreSQL 16 (+ pgvector in V2)
+```
+
+### 3.1  Why a modular monolith
+
+Solo developer, one migration chain, one log stream, one deploy target, £0 budget. Extraction stays possible because the **interfaces** are clean, not because the processes are separate.
+
+### 3.2  Module boundaries
+
+Each module exposes an application interface and owns its own data access. Cross-module database reads are a defect unless documented in an ADR.
+
+```text
+session    → who is learning, at what calibration, with what budgets
+research   → topic → EvidencePacket
+planner    → EvidencePacket + AudienceProfile → LessonPlan | CoursePlan
+composer   → one scene's spec + relevant evidence → SceneSpec
+director   → SceneSpec + registry → CueSheet
+validator  → CueSheet + scene graph → Verdict
+builder    → orchestrates the pipeline, persists, emits progress
+tutor      → learner utterance + packet + position → Answer + resume directive
+notes      → Lesson + evidence → NoteArtifact
+moderation → signals + sensitivity profile → ladder decision
+```
+
+The **builder** is the only module that knows the pipeline order. Every other module takes typed input and returns typed output, which is what makes each one independently testable.
+
+## 4  Packages with no dependencies
+
+Two pure packages carry all the hard logic. They import nothing from React, the DOM, the network, or the database.
+
+| **Package** | **Contains** | **Rule** |
+| --- | --- | --- |
+| @sce/timeline | cue resolution, clock port, player, camera interpolation | pure; clock injected; no Date.now() |
+| @sce/scene | scene graph, anchors, primitive registry, validators, physics helpers | pure; deterministic |
+
+**Purity is a testable property, not a style preference.** Both packages must run under plain node with no jsdom. If a test needs a DOM to exercise the resolver, the resolver has drifted.
+
+## 5  Ports
+
+Domain and application code never import an SDK. Each port has at least one real adapter and one deterministic mock.
+
+```ts
+export interface LlmProvider {
+  complete<T>(req: LlmRequest, schema: ZodType<T>, signal?: AbortSignal): Promise<T>;
+}
+
+export interface TtsProvider {
+  synthesise(req: { text: string; voiceId: string; style?: TtsStyle }): Promise<Utterance>;
+}
+
+export interface SttProvider {
+  transcribe(req: { audio: AudioRef; language?: string }): Promise<{ text: string; confidence: number }>;
+}
+
+export interface SearchProvider {
+  search(req: { query: string; limit: number }): Promise<SearchResult[]>;
+}
+
+export interface StorageProvider {
+  put(object: { key: string; bytes: Uint8Array; contentType: string }): Promise<ObjectRef>;
+  get(ref: ObjectRef): Promise<Uint8Array>;
+  delete(ref: ObjectRef): Promise<void>;
+}
+
+/** V2 seams — declared now, implemented later. */
+export interface DocumentExtractor { extract(ref: ObjectRef): Promise<ExtractedPage[]>; }
+export interface Retriever { retrieve(q: RetrievalQuery): Promise<Evidence[]>; }
+export interface MediaProvider { issueToken(join: JoinRequest): Promise<MediaToken>; }
+export interface CharacterProvider { load(characterId: string): Promise<CharacterBundle>; }
+export interface LessonRenderer { render(lesson: Lesson): Promise<{ bytes: Uint8Array }>; }
+```
+
+TtsProvider returns an Utterance whose word timings are **optional in the type**, so the “no timestamps” case is something the resolver must handle explicitly rather than a silent zero.
+
+## 6  The evidence packet
+
+The frozen, cited truth a lesson is built from. Immutable once used.
+
+```ts
+export interface EvidencePacket {
+  schemaVersion: 1;
+  id: string;
+  topic: TopicRef;
+  researchedAt: string;              // ISO 8601
+  claims: Claim[];
+  sources: Source[];
+  misconceptions: Misconception[];   // candidate wrong beliefs to overturn
+  unresolved: string[];              // what could NOT be verified — shown honestly
+}
+
+export interface Claim {
+  id: string;                        // "c1"
+  text: string;                      // "Earth is ~147.1 million km from the Sun in early January"
+  numericValue?: number;
+  unit?: "km" | "deg" | "percent" | "s";
+  websiteRefs: string[];             // must be non-empty
+  confidence: "verified" | "single-source" | "contested";
+}
+
+export interface Source {
+  id: string;                        // "s1"
+  url: string;
+  title: string;
+  publisher: string;
+  retrievedAt: string;
+  excerpt: string;                   // the sentence the claim came from
+  licence?: string;
+}
+```
+
+**Rules**
+
+- A Claim with an empty websiteRefs cannot be used in a lesson.
+
+- unresolved is displayed, not hidden. “I could not verify X” is a feature.
+
+- A packet is versioned. New research creates a new packet; a built lesson keeps the version it used.
+
+- The tutor answering a live question reads only from the packet attached to the lesson.
+
+## 7  Lesson plan
+
+```ts
+export interface LessonPlan {
+  schemaVersion: 1;
+  id: string;
+  evidencePacketId: string;
+  audience: AudienceProfile;
+  title: string;
+  objective: string;                 // one sentence the learner should be able to say afterwards
+  estimatedMinutes: number;          // 5–7 or 8–12
+  arc: { setup: string[]; confrontation: string[]; resolution: string[] };
+  scenes: SceneBrief[];
+  splitRationale?: string;           // present when this came from a CoursePlan split
+}
+
+export interface SceneBrief {
+  index: number;
+  idea: string;                      // exactly one
+  misconception?: string;            // the wrong belief this scene overturns
+  evidenceClaimIds: string[];        // what grounds it
+  participation?: "watch" | "guess" | "do";
+  durationTargetSec: number;         // 60–90
+}
+```
+
+### 7.1  Course splitting
+
+When scope exceeds one lesson, the planner emits a CoursePlan with named lessons and per-lesson coverage. The learner accepts the arc, picks one lesson, or starts from the beginning. Follow-up lessons inherit the same evidence packet unless explicitly re-researched.
+
+## 8  Scene spec and cue sheet
+
+### 8.1  SceneSpec — what is on screen
+
+```ts
+export interface SceneSpec {
+  schemaVersion: 1;
+  sceneId: string;
+  anchors: string[];                 // must all exist in the scene graph
+  objects: SceneObject[];            // spheres, lights, lines, labels, stills
+  lights: LightSpec[];               // one key light, motivated bird
+  manipulables: Manipulable[];       // named parameters the learner may change
+}
+
+export interface Manipulable {
+  parameter: "axisTiltDeg" | "orbitSpeed" | "sunElevationDeg";
+  min: number; max: number; default: number; unit: string;
+  affordance: "grab" | "slider" | "both";
+}
+```
+
+### 8.2  CueSheet — what happens, and when
+
+```ts
+export interface CueSheet {
+  schemaVersion: 1;
+  sceneId: string;
+  utterances: UtteranceScript[];
+  cues: Cue[];
+}
+
+export interface UtteranceScript {
+  id: string;                        // "u4"
+  text: string;
+  voiceId: string;
+  style?: { pace: "slow" | "normal"; emphasis?: string[] };
+}
+
+export interface Cue {
+  id: string;
+  track: "camera" | "teacher" | "scene" | "board" | "light" | "learner" | "audio";
+  primitive: PrimitiveId;
+  params: Record<string, unknown>;   // validated against the primitive's schema
+  at:
+    | { utteranceId: string; wordIndex: number }   // word-anchored — preferred
+    | { offsetMs: number };                        // explicit — allowed
+  motivation?: string;               // required for camera primitives
+}
+```
+
+**The LLM never produces `at.offsetMs` unless the cue is genuinely independent of speech** (a hold, a world event, a pre-roll). Word-anchored is the default and the reviewed form.
+
+### 8.3  A real fragment
+
+```json
+{
+  "schemaVersion": 1,
+  "sceneId": "hot-in-july/s4",
+  "utterances": [
+    { "id": "u4", "text": "Same sunlight, same amount. In July it lands steep and concentrated.", "voiceId": "teacher.maya" }
+  ],
+  "cues": [
+    { "id": "c4.1", "track": "teacher", "primitive": "teacher.point",
+      "params": { "hand": "right", "target": "earth.patch" },
+      "at": { "utteranceId": "u4", "wordIndex": 2 } },
+    { "id": "c4.2", "track": "camera", "primitive": "camera.lockOff",
+      "params": { "framing": "wideSideProfile", "sunSide": "left" },
+      "at": { "utteranceId": "u4", "wordIndex": 0 },
+      "motivation": "hold the frame so the two patches can be compared" }
+  ]
+}
+```
+
+## 9  Primitive registry
+
+The closed set the AI may compose from. Each entry has a parameter schema, a validator, an executor, and a golden test. An unknown primitive is rejected — never approximated.
+
+| **Track** | **Primitive** | **Parameters** | **Validation** |
+| --- | --- | --- | --- |
+| camera | lockOff | framing, sunSide | framing in enum; sunSide consistent within scene |
+| camera | pushIn | from, to, durationMs | durationMs > 0; ≤ 4000 |
+| camera | orbitArc | degrees, durationMs, target | degrees ≠ 0; target is an anchor |
+| camera | diveThrough | fromAnchor, toAnchor, swapObjectId | feature-flagged; reference implementation only |
+| camera | pullOut | to, durationMs | durationMs > 0 |
+| camera | cut | to, framing | instantaneous; no duration |
+| teacher | lookAt | target | anchor exists; must precede point for the same target |
+| teacher | point | hand, target | anchor exists |
+| teacher | gesture | kind, intensity | kind in enum |
+| teacher | turnToLearner | — | — |
+| teacher | handOffObject | objectId | object is manipulable |
+| scene | spawn | objectId, at | objectId in scene |
+| scene | drawRing | aroundAnchor, radiusM | radiusM > 0 |
+| scene | drawLine | from, to, style | both anchors exist |
+| scene | setParam | parameter, value | inside declared range |
+| scene | animateParam | parameter, from, to, durationMs | both in range |
+| scene | freeze | target | — |
+| scene | label | text, atAnchor, style | text ≤ 40 chars |
+| light | keyFromSun | sunElevationDeg | 0–90 |
+| board | showStill | imageId, region? | image exists |
+| board | highlightRegion | x, y, w, h | inside bounds |
+| learner | enableGrab | objectId, parameter | parameter declared manipulable |
+| learner | promptGesture | kind | — |
+| learner | holdSilence | ms | 500–4000 |
+
+**Growth rule:** a new primitive ships with schema, validator, executor, and a test that proves the validator rejects a bad parameter. Never add a primitive without its rejection case.
+
+## 10  Timeline resolution
+
+### 10.1  The signature
+
+```ts
+export interface Clock { now(): number; }
+
+export interface Timeline { entries: TimelineEntry[]; durationMs: number; }
+
+export function resolveTimeline(
+  cueSheet: CueSheet,
+  utteranceTimings: Record<string, WordTiming[] | null>,
+): Timeline;
+```
+
+Pure. No clock, no I/O, no randomness.
+
+### 10.2  Algorithm
+
+```text
+for each utterance: compute startMs and wordOffsets[]
+for each cue:
+  if word-anchored:
+     timings = utteranceTimings[utteranceId]
+     if timings is null  → apply the documented fallback, mark the cue `approximate`
+     else                → atMs = timings[wordIndex].startMs
+  else → atMs = offsetMs
+sort entries by atMs, then by track precedence
+reject or flag entries violating ordering rules (§9.4)
+durationMs = max(entry.atMs + entry.durationMs, last utterance end)
+```
+
+### 10.3  Drift budget
+
+Every resolved cue is compared against its intended position in the golden fixture:
+
+```text
+drift(cue) = |resolvedMs − intendedMs|
+worstCaseDrift = max over all cues
+```
+
+A named budget (to be fixed at the first golden test) is enforced in CI. Exceeding it fails the build. **Drift is a first-class metric, not a warning.** Cues resolved via the fallback path are marked approximate and reported separately — an approximate cue is a known debt, an unmarked late cue is a bug.
+
+### 10.4  Ordering rules, enforced by the resolver
+
+1. teacher.lookAt(t) before teacher.point(t) before the word that names t.
+
+2. A camera cut takes effect at its atMs and invalidates in-flight interpolation.
+
+3. No two scene.setParam cues on the same parameter may overlap without an intervening animateParam.
+
+4. learner.holdSilence blocks all tracks except camera for its duration.
+
+### 10.5  The player
+
+```ts
+export function createPlayer(timeline: Timeline, clock: Clock): Player;
+// player.advance() is called each frame; entries whose atMs <= clock.now() fire once
+```
+
+Tests use a ManualClock and step frame by frame, asserting state at arbitrary instants:
+
+```ts
+clock.advanceTo(12_400);
+expect(world.teacher.pointTarget).toBe('earth.patch');
+```
+
+## 11  Scene graph and anchors
+
+```ts
+export interface SceneGraph {
+  anchors: Map<string, Anchor>;       // name → transform provider
+  objects: Map<string, SceneObject>;
+  manip: Map<string, Manipulable>;
+}
+```
+
+**Anchor naming is a contract with the art pipeline.** Renaming one is a breaking change requiring an ADR.
+
+| **Anchor** | **Meaning** |
+| --- | --- |
+| sun | key light position |
+| earth | planet root |
+| earth.axis | axis line endpoints |
+| earth.patch | the lit surface patch under discussion |
+| teacher.root | rig root |
+| teacher.hand.left / .right | IK targets |
+| teacher.eyes | for look-at solving |
+| learner.camera | the viewer |
+| board.surface | presentational plane |
+
+### 11.1  Deixis mechanics
+
+- lookAt solves a look-at constraint on the head/spine chain.
+
+- point solves IK for the chosen hand toward the anchor, holding for the cue’s duration.
+
+- Both are **procedural constraints**, not baked clips. A baked point cannot target a runtime anchor.
+
+## 12  Physics rules
+
+### 12.1  One motivated light
+
+The sun is a single directional light. Its elevation is a scene parameter. **Shadow length is derived:**
+
+```text
+shadowLength = objectHeight / tan(sunElevationDeg × π / 180)
+```
+
+Clamped to avoid division blow-up near the horizon, and the clamp is documented in the code with its reason.
+
+### 12.2  The consequence for content
+
+If a lesson explains seasons, the shadow in shot 5 must be the shadow produced by the elevation the narration describes. **The render is the proof of the explanation.** A scene that fakes a shadow is a factual error with a nice picture.
+
+### 12.3  Two instances, one light
+
+July and January Earths share one light. If a scene needs two key lights to make its point, the point is wrong.
+
+## 13  Data model
+
+| **Table** | **Holds** | **Key columns** |
+| --- | --- | --- |
+| sessions | one learner’s visit | id, audience_profile jsonb, sensitivity jsonb, state, budget_tokens, created_at, expires_at |
+| topics | what was asked | id, session_id, raw_text, normalised_intent, depth |
+| evidence_packets | frozen research | id, topic_id, schema_version, researched_at, payload jsonb |
+| lessons | built artefacts | id, session_id, evidence_packet_id, plan jsonb, status, duration_ms, version |
+| scenes | per-scene records | id, lesson_id, index, idea, cue_sheet jsonb, scene_spec jsonb |
+| utterances | narration + timings | id, scene_id, text, voice_id, audio_ref, word_timings jsonb |
+| notes | end artefacts | id, lesson_id, payload jsonb, rendered_format, created_at |
+| teachers | persona configs | id, display_name, archetype, voice_id, register_by_age jsonb, style, avatar_ref |
+| venues | environments | id, asset_ref, lighting_rig jsonb, anchors jsonb |
+| moderation_events | incidents | id, session_id, level, signal, action, reversible, created_at |
+| cost_entries | spend | id, session_id, provider, model, units, estimated_cost, created_at |
+| eval_runs | quality history | id, suite, tier, model, started_at, score jsonb |
+| consents | acknowledgements | id, subject_id, purpose, version, granted_at, withdrawn_at |
+
+### 13.1  Storage rules
+
+- Never persist per-frame pose history.
+
+- Evidence packets are append-only. Updating research creates a new version.
+
+- Every generated artefact records the model, prompt version, and cost that produced it.
+
+- Retention is explicit per table, and deletion is proved by a test, not by intention.
+
+- V2 adds materials, material_pages, chunks (with vector(1536)), citations, courses, enrollments, rooms, participants, publications.
+
+## 14  API surface
+
+Base /api/v1. Typed errors only.
+
+```text
+GET    /health/live
+GET    /health/ready
+GET    /teachers
+POST   /sessions                     { topic, audience }            → session
+GET    /sessions/:id
+POST   /sessions/:id/build            starts the pipeline           → job id
+GET    /sessions/:id/build/events     SSE: progress + stage payloads
+GET    /sessions/:id/lesson
+POST   /sessions/:id/questions        { text, atMs }                → answer + resume
+POST   /sessions/:id/notes            → note artefact
+POST   /sessions/:id/signals          moderation signal (no media)
+```
+
+Error shape:
+
+```json
+{ "error": { "code": "EVIDENCE_UNRESOLVED", "message": "Two claims could not be verified.", "requestId": "…", "retryable": false } }
+```
+
+Codes are stable identifiers, not prose. Messages are user-facing and specific. No stack trace, SQL, or cross-session existence leakage.
+
+## 15  Pipeline and progress
+
+```text
+queued → researching → planning → composing → directing → validating → ready
+                                                            ↘ failed(code)
+```
+
+- Each stage persists its artefact before advancing, so a crash resumes rather than restarts.
+
+- Progress events are plain language: *“Researching sources…”*, *“Building your lesson…”*, *“Animating scene 3 of 7…”*.
+
+- A validation failure names the scene, the cue, and the rule violated.
+
+- The job runner sits behind a JobQueue port: in-process now, swappable later. **No long-running work may depend on a request continuing to exist.**
+
+## 16  Evaluation design
+
+| **Tier** | **Runs** | **Cost** | **Catches** |
+| --- | --- | --- | --- |
+| 0 Contract | every commit | ~0 | malformed artefacts, unknown primitives, missing anchors, parameter bounds |
+| 1 Determinism | every commit | ~0 | timing drift, ordering violations, replay divergence |
+| 2 Physics | every commit | ~0 | shadow/angle invariants, orbit positions, scale-transition geometry |
+| 3 Grounding | nightly | low | unsupported claims, unresolved citations, retrieval quality (V2) |
+| 4 Judge | nightly | medium | arc quality, level appropriateness, deixis quality, one-idea-per-shot |
+| 5 Red team | weekly + release | medium | jailbreak, injection via retrieved text, unsafe content, persona drift at turn 20 |
+| 6 Regression corpus | release | medium | silent quality decay across model upgrades |
+| 7 Human calibration | release | human | judge agreement — the honesty check on tier 4 |
+
+### 16.1  The judge is an instrument
+
+A judge model will confidently reward plausible garbage. Therefore:
+
+- rubrics are concrete and anchored to labelled examples
+
+- judge-vs-human agreement is measured and reported
+
+- every score carries its reasoning so a human can audit it
+
+- a judge-only gate is never the sole evidence for a release claim
+
+### 16.2  Operable metrics
+
+| **Dimension** | **Measured by** |
+| --- | --- |
+| Factual correctness | every claim resolves to evidence; sampled human review |
+| Timing fidelity | worst-case resolved drift against budget |
+| Deictic correctness | automated: point target equals the object the narration names |
+| Pedagogical arc | judge rubric: misconception present, reveal present, participation present |
+| Level appropriateness | judge rubric against AudienceProfile |
+| Structure | one new element per shot; silence budget; shot count |
+| Safety | red-team pass rate; zero tolerance categories |
+| Cost | currency per lesson against ceiling |
+| Latency | time-to-first-scene, time-to-playable |
+| Accessibility | automated checks plus a scripted manual audit |
+
+## 17  Cost model and controls
+
+| **Stage** | **Approximate per lesson** |
+| --- | --- |
+| Research (LLM + search) | $0.02–0.10 |
+| Plan + compose + direct | $0.05–0.25 |
+| Critic pass | $0.02–0.08 |
+| TTS | $0.00–0.05 |
+| Notes | $0.01–0.03 |
+| **Total** | **≈ $0.10–0.50** |
+
+Controls: one repair retry then hard failure; per-session token ceiling enforced server-side; cheap models for repair and critic; cost ledger row per artefact; evidence-packet cache keyed on a privacy-safe hash of the topic.
+
+## 18  Performance budgets
+
+| **Budget** | **Target** | **Checked by** |
+| --- | --- | --- |
+| DOM shell interactive | before any heavy asset loads | manual + trace |
+| Classroom asset transfer | ≤ 10 MB compressed | asset budget script |
+| Teacher avatar | ≤ 5 MB | asset budget script |
+| Texture | ≤ 2K unless ADR’d | asset budget script |
+| Frame rate | ≥ 30 fps on the reference device | manual profile |
+| Timeline tick cost | ≤ 1 ms per frame | benchmark test |
+| Time to playable lesson | published target, measured per release | pipeline metric |
+
+## 19  Accessibility contract
+
+- Essential actions exist in semantic DOM with feature parity: ask, raise hand, mute, read transcript, read notes, leave, report.
+
+- Captions for all speech; transcript always available.
+
+- prefers-reduced-motion disables camera cuts, orbit animation, and any fast zoom.
+
+- Live regions announce teacher speech and system state without flooding.
+
+- Focus is visible, logical, and restored after dialogs and source viewers.
+
+- Works at 200% zoom; touch targets ≥ 44 px.
+
+- Spatial audio is never the only channel; when spatialisation is off, speech stays centred and intelligible.
+
+- The no-camera and no-audio-monitoring paths are first-class, not degraded.
+
+## 20  Security posture
+
+| **Threat** | **Control** |
+| --- | --- |
+| Injection via retrieved content | evidence is a data block; tools are allowlisted; no instruction interpolation |
+| Model output as executable | primitives only; no HTML, ever |
+| SSRF on search/fetch | scheme + host allowlist, private-range block, redirect re-validation, timeout |
+| Secret exposure | server-side only; no NEXT_PUBLIC_* key; masked in logs |
+| Cost exhaustion | per-session ceiling, rate limits, hard stops, ledger |
+| Cross-session access | unguessable ids; ownership check on every read and write |
+| Moderation false positives | ladder, reversibility, sensitivity profile, human-only permanent removal |
+| Supply chain | pinned deps, lockfile, advisory checks, dependency budget |
+
+## 21  Deployment evolution
+
+| **Stage** | **Shape** |
+| --- | --- |
+| Development | local: web, server, Postgres in Docker, Cloudflare Tunnel for sharing |
+| First public release | free-tier container host + free-tier managed Postgres + CDN |
+| First real users | paid containers, object storage, monitoring |
+| Growth | queue service, object store, managed media, possible render workers |
+
+Kubernetes, multi-region, and self-hosted models are **not** on the roadmap. They are options if measured need appears, behind an ADR.
+
+## 22  ADR index
+
+| **#** | **Decision** |
+| --- | --- |
+| 0001 | Open-source licence (Apache-2.0) |
+| 0002 | Modular monolith over microservices |
+| 0003 | The timeline resolver is a pure function with an injected clock |
+| 0004 | Lesson is data: versioned cue sheets, not runtime improvisation |
+| 0005 | Authoring-time grounding via immutable evidence packets |
+| 0006 | Closed primitive registry with per-primitive validators |
+| 0007 | Coordinate and unit convention (metres, right-handed, +Y up, −Z forward, quaternion [x,y,z,w]) |
+| 0008 | Provider-neutral ports with mandatory mocks |
+| 0009 | TypeScript application, Python evaluation harness |
+| 0010 | 16+ age gate with audience profile as a first-class parameter |
+| 0011 | Moderation ladder: autonomous warn/mute, human-only removal |
+| 0012 | No video export; notes are the shareable artefact |
+| 0013 | Character policy: public domain, historical, original only |
+| 0014 | PostgreSQL as the single durable store; pgvector in V2 |
+
+## 23  Change control
+
+Any change to the following requires this document and an ADR in the same pull request:
+
+- module boundaries or the pipeline order
+
+- a public contract (EvidencePacket, LessonPlan, CueSheet, PrimitiveId, HTTP shapes)
+
+- the coordinate convention or units
+
+- provider topology (direct provider call vs proxied)
+
+- retention, privacy, or moderation autonomy
+
+- an evaluation gate or its threshold
+
+- a new primitive, persona model, or venue model
+
+Stale architecture documentation is a defect, not backlog.

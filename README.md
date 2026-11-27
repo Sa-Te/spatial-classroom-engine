@@ -10,12 +10,14 @@ answers questions and hands over source-cited notes.
  
 | Document | Purpose |
 |---|---|
-| `docs/SPEC.md` | What the product is, and V1/V2 scope |
-| `TECHNICAL_DESIGN.md` | How it is built (after setup) |
-| `AGENTS.md` | Rules for coding agents |
-| `GOTCHAS.md` | Known traps |
-| `SETUP_AND_VERIFY.md` | This document |
-| `ROADMAP.md` | Phased delivery (after setup) |
+| `docs/SPEC.md` | Product specification — **not yet supplied** |
+| [`AGENTS.md`](AGENTS.md) | Rules for coding agents |
+| [`TECHNICAL_DESIGN.md`](docs/TECHNICAL_DESIGN.md) | How it is built |
+| [`GOTCHAS.md`](docs/GOTCHAS.md) | Known traps |
+| [`SETUP_AND_VERIFY.md`](docs/SETUP_AND_VERIFY.md) | Machine setup and verification |
+| [`OPENCODE_SETUP.md`](docs/OPENCODE_SETUP.md) | Multi-agent configuration and skills |
+| [`ROADMAP.md`](docs/ROADMAP.md) | Phased delivery |
+| [`TASKS.md`](docs/TASKS.md) | Current task coordination |
  
 ## Licence
  
