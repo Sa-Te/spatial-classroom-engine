@@ -365,11 +365,11 @@ docker compose start postgres
 
 ### 7.4  The reviewer's shell rules silently stopped applying in one session
 
-**SYMPTOM** Every command the reviewer ran returned `Permission denied: shell`, including `pnpm test` and `pnpm typecheck`, which are explicitly allowed. It is intermittent and has struck four times across two tasks. The verdict then reported unrun checks, or read files statically and called itself PARTIAL.
+**SYMPTOM** Every command the reviewer ran returned `Permission denied: shell`, including `pnpm test` and `pnpm typecheck`, which are explicitly allowed. Eleven denials across four tasks. It is intermittent: it has cleared in a fresh session after one denial, and it has also survived consecutive fresh invocations, leaving post-fix trees with no independent execution.
 
 **CAUSE** Not established, and three probes ruled out the obvious answers. Run standalone through `opencode run --agent reviewer`, both `git status` and `pnpm typecheck` are allowed. Run as a nested subagent, both are allowed too. The frontmatter is clean — no tabs, no trailing spaces, no duplicated keys — and `opencode debug agents` reproduces the file's rules in order. The failures cluster on back-to-back reviewer invocations within one parent turn, which is a pattern, not a demonstrated cause.
 
-**FIX** Treat it as a process failure, not a code finding. Delegate each review as its own invocation, never chained onto a session that has already returned. If a denial appears, re-invoke once in a fresh session; if it repeats, stop and report to the human — CI still gives an independent execution of the suite, but an execution is not a review.
+**FIX** Treat it as a process failure, not a code finding. Delegate each review as its own standalone invocation, never chained onto a session that has already returned, and never widen the permissions — three probes showed the rules were already correct. If a denial appears, re-invoke once; if it repeats, stop and report to the human. CI still gives an independent execution of the suite, and the judge gives an independent opinion of the diff, but neither is a review.
 
 **NEVER** Widen the reviewer's permissions to "fix" it. Three probes showed the rules were already correct, and a wider allowlist would hide the real fault.
 

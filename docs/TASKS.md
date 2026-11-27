@@ -10,7 +10,23 @@ Phase definition of done: `docs/ROADMAP.md` P1 — `pnpm verify`, the named test
 
 ## Ready
 
-(nothing — the next task is proposed by the architect and requires human sign-off before it is written here)
+### T6B — Cue.params discriminated union, ADR 0016, and LessonPlan.topic
+
+- **Status:** ready
+- **Note:** T5's existing cue-sheet tests will need updating because the contract changes shape. That is expected and is part of this task, not a regression.
+- **Files:** `packages/contracts/src/cue-sheet.ts`, `packages/contracts/src/cue-sheet.test.ts`, `packages/contracts/src/lesson.ts`, `packages/contracts/src/lesson.test.ts`, `packages/contracts/src/primitives/index.ts`, `packages/contracts/src/index.ts`, `docs/TECHNICAL_DESIGN.md` §7, §8.2 and §8.3, `docs/adr/0016-*.md`
+- **Done when:**
+  - `Cue.params` is a discriminated union keyed on the primitive id, with all nine branches, each delegating to the schema already registered in `packages/contracts/src/primitives`.
+  - An unknown primitive id is still rejected, and a params shape that does not match its primitive is rejected with the primitive id named in the failure.
+  - A cue sheet containing `camera.lockOff` with a `sunSide` parameter is rejected, because frozen decision Q5 derives it from the key light.
+  - The worked fragment in `TECHNICAL_DESIGN` §8.3 and the T5 test fixture are corrected in the same change, so the shipped example is a valid cue sheet. They must move together: fixing one without the other turns the documented example into a rejected cue.
+  - `LessonPlan` gains `topic: TopicRef`, with a passing test, and `TECHNICAL_DESIGN` §7 updated.
+  - ADR 0016 records both changes: why `params` became a union, and why the lesson carries a topic. No invented rationale; anything unsupported goes in an Open questions section.
+  - No executor, no range or membership validation: T15 owns those.
+- **Out of scope:** executor behaviour; range or membership validation (T15); the window-overlap rule (T12); any change under `apps/`; any P2 work.
+- **Proving command:** `pnpm --filter @sce/contracts exec vitest run src/cue-sheet.test.ts src/lesson.test.ts && pnpm typecheck && pnpm format:check`
+- **Skill:** api-and-interface-design, then test-driven-development
+- **Estimated:** about 200 changed lines
 
 ## Deferred housekeeping
 
@@ -19,6 +35,7 @@ Phase definition of done: `docs/ROADMAP.md` P1 — `pnpm verify`, the named test
 - `docs/TECHNICAL_DESIGN.md` §8.3's worked fragment still passes `sunSide` inside `camera.lockOff` params, which Q5 removed. It parses today only because `Cue.params` is an unvalidated record, and the T5 test pastes that fragment verbatim. T6B must fix the fragment and the fixture together, or the union will turn a shipped example into a rejected cue.
 - `main` carries one moderate Dependabot advisory, unrelated to P1 code. The fix is Dependabot's own pull request: do not hand-edit a version bump inside a contracts change, and do not touch the lockfile for it.
 - No verifier agent. The reviewer's shell fault is intermittent, not deterministic, so a second agent would fail intermittently too and add a moving part without removing the unknown. Revisit only if the fault becomes reproducible.
+- T4 and T6 shipped on static reviews with no delta. Both are recorded as unreviewed, not as passes, in their Done entries. A future session can retro-fit both by making one reviewer invocation that actually executes cover `a7be114^1..a7be114` and `b1c01a8^1..b1c01a8` together.
 
 ## Done
 
