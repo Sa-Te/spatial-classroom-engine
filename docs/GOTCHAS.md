@@ -373,7 +373,7 @@ docker compose start postgres
 
 **NEVER** Widen permissions to "fix" it, and never read the denial as evidence about the diff. The rules were already correct.
 
-## 8  Process
+## 8  Process
 
 ### 8.1  “It works” without the command is not a report
 
