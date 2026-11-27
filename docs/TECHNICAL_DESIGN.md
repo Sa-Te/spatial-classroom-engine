@@ -286,9 +286,17 @@ export interface Cue {
     | { offsetMs: number };                        // explicit — allowed
   motivation?: string;               // required for camera primitives
 }
+
+export interface WordTiming {
+  word: string;
+  startMs: number;                   // milliseconds from utterance start
+  endMs: number;                     // must be greater than startMs
+}
 ```
 
 **The LLM never produces `at.offsetMs` unless the cue is genuinely independent of speech** (a hold, a world event, a pre-roll). Word-anchored is the default and the reviewed form.
+
+In P1 the schema types `primitive` as a string; Q1 narrows it to the closed nine-id union at T6, and ADR 0016 replaces `params` with a discriminated union keyed on it.
 
 ### 8.3  A real fragment
 
