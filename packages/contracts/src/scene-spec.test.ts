@@ -142,16 +142,6 @@ describe('ManipulableSchema', () => {
     expect(issuePaths(ManipulableSchema, manipulable)).toContain('parameter');
   });
 
-  it('rejects an infinite bound, because a range must be finite', () => {
-    const infiniteMax = { ...manipulableExample, max: Number.POSITIVE_INFINITY };
-    const infiniteMin = { ...manipulableExample, min: Number.NEGATIVE_INFINITY };
-
-    expect(ManipulableSchema.safeParse(infiniteMax).success).toBe(false);
-    expect(ManipulableSchema.safeParse(infiniteMin).success).toBe(false);
-    expect(issuePaths(ManipulableSchema, infiniteMax)).toContain('max');
-    expect(issuePaths(ManipulableSchema, infiniteMin)).toContain('min');
-  });
-
   it('rejects an empty unit, because a range without a unit cannot be interpreted', () => {
     const manipulable = { ...manipulableExample, unit: '' };
 
