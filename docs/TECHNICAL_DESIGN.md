@@ -201,6 +201,13 @@ export interface LessonPlan {
   splitRationale?: string;           // present when this came from a CoursePlan split
 }
 
+export interface AudienceProfile {
+  ageBand: "16+";                    // the only band; the age gate is deliberate
+  readingLevel: "intro" | "intermediate" | "advanced";
+  priorKnowledge: "none" | "some" | "strong";
+  pace: "slower" | "standard" | "brisker";
+}
+
 export interface SceneBrief {
   index: number;
   idea: string;                      // exactly one
@@ -210,6 +217,8 @@ export interface SceneBrief {
   durationTargetSec: number;         // 60–90
 }
 ```
+
+- `idea` carries exactly one idea. That is not expressible as a type, so it is a P2 validator obligation (the Tier 4 judge rubric in §16), not a schema constraint.
 
 ### 7.1  Course splitting
 
