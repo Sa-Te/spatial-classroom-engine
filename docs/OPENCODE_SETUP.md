@@ -292,6 +292,10 @@ pnpm verify
 
 ### 5.3  .opencode/agents/reviewer.md
 
+The reviewer is an OpenCode agent, not a GitHub account. `gh pr edit --add-reviewer` cannot
+use it: `@reviewer` is not a resolvable login. Agent review is a local process, and on a solo
+repository the GitHub review slot stays empty. Do not attempt to attach it.
+
 ```markdown
 ---
 description: Audits a diff against the task, the contracts, and AGENTS.md; returns PASS, FAIL, or PARTIAL VERIFICATION
@@ -570,7 +574,7 @@ Daily, per task:
 2. Architect: rewrites the task, delegates
 3. Coder: implements, tests, runs pnpm verify, reports
 4. Architect: sends diff to reviewer
-5. Reviewer: PASS or FAIL with line references
+5. Reviewer: PASS, FAIL, or PARTIAL VERIFICATION with line references. A PARTIAL VERIFICATION triggers one fresh re-invocation and, if it repeats, a human escalation.
 6. Architect: updates docs/TASKS.md, stops
 7. Human: reads the diff, runs the commands, commits
 ```
