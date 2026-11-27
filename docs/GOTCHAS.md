@@ -78,6 +78,28 @@ cp apps/server/.env.example apps/server/.env
 
 **NEVER** Re-broaden the deny to `.env.*` and assume `.env.example` is safe. It is matched.
 
+### 2.5  A passphrase-protected SSH key cannot be unlocked by an unattended session
+
+**SYMPTOM** `git push` from an agent session fails with `git@github.com: Permission denied (publickey)`, sometimes preceded by `ssh_askpass: exec(/usr/bin/ssh-askpass): No such file or directory`. `gh auth status` looks healthy and `gh ssh-key list` shows the key, so the key appears registered and the diagnosis goes the wrong way.
+
+**CAUSE** The private key is encrypted. Signing needs the passphrase, which needs a TTY or an ssh-agent. `SSH_AUTH_SOCK` is unset in the unattended process, so `ssh` selects the correct identity file and then cannot sign.
+
+**FIX** Establish the cause before changing anything:
+
+```bash
+ssh-keygen -y -P "" -f ~/.ssh/id_ed25519   # "incorrect passphrase" = the key is encrypted
+echo "$SSH_AUTH_SOCK"                      # empty = no agent in this process
+gh ssh-key list                            # the key is usually already registered
+```
+
+Then load the agent in the shell that will push (`eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519`), or push once over HTTPS without touching the remote:
+
+```bash
+git -c credential.helper='!gh auth git-credential' push https://github.com/<owner>/<repo>.git <branch>
+```
+
+**NEVER** Re-register the key as a first reaction, and never `git remote set-url` as a workaround. The key was already on the account, so re-adding changes nothing and buries the real cause; and the remote is documented as SSH.
+
 # 3  Build and TypeScript
 
 ### 3.1  A doubled quote in tsconfig.json reports as a Next.js config error

@@ -122,10 +122,13 @@ printf '.DS_Store\nThumbs.db\n.idea/\n.vscode/\n*.swp\n' > ~/.gitignore_global
 ```bash
 ssh-keygen -t ed25519 -C "akkireddytj@gmail.com"
 # press Enter for the default path, then set a passphrase
-eval "$(ssh-agent -s)" //passphrase here
-ssh-add ~/.ssh/id_ed25519
-gh auth login          # choose: GitHub.com → SSH → upload your public key → login with browser
+eval "$(ssh-agent -s)"                                        # run this in the shell that will push
+ssh-add ~/.ssh/id_ed25519                                     # enter the passphrase once
+gh ssh-key add ~/.ssh/id_ed25519.pub --title "$(hostname)"    # upload the public key
+gh auth login                                                 # GitHub.com, and SSH when asked for the git protocol
 ```
+
+> **The agent lives in one shell, not on the machine.** `eval "$(ssh-agent -s)"` exports `SSH_AUTH_SOCK` into the shell that ran it. Any separate process — an editor, a CI runner, an agent session — does not inherit it. A passphrase-protected key therefore cannot be unlocked there, and `ssh -T git@github.com` will fail even though the key is registered.
 
 ### 4.3  VERIFY
 
@@ -144,7 +147,7 @@ gh auth status
 
 - gh auth status shows you logged in with the repo and workflow scopes.
 
-**If it fails:** ssh -T returning *Permission denied (publickey)* means the key was not uploaded — run gh ssh-key add ~/.ssh/id_ed25519.pub --title "laptop" and retry.
+**If it fails:** *Permission denied (publickey)* has two causes and they look identical. If `ssh_askpass: exec(/usr/bin/ssh-askpass): No such file or directory` appears first, the key is passphrase-protected and no agent holds it — load the agent in this shell with `eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519`. Otherwise the public key is not on the account — check `gh ssh-key list` before adding anything, because the key is often already there.
 
 ## 5  Step 3 — Create the GitHub repository
 
@@ -1489,7 +1492,7 @@ Print this. Tape it to the wall. Every line is one command and one expectation.
 | --- | --- | --- | --- |
 | 1 | Prerequisites | node -v && pnpm -v && docker --version | three versions, no errors |
 | 2 | Git identity | git config --global user.email | your address |
-| 3 | SSH | ssh -T git@github.com | Hi Sa-Te! You’ve successfully authenticated |
+| 3 | SSH | eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519 && ssh -T git@github.com | Hi Sa-Te! You’ve successfully authenticated |
 | 4 | Remote | git remote -v | git@github.com:... |
 | 5 | Protection | gh api repos/Sa-Te/spatial-classroom-engine/branches/main/protection | JSON, not 404 |
 | 6 | Install | pnpm install | completes, lockfile unchanged |
