@@ -33,6 +33,15 @@ permissions:
     resource: "*"
     effect: allow
   - action: shell
+    resource: "gh pr merge*"
+    effect: ask
+  - action: shell
+    resource: "gh repo edit*"
+    effect: ask
+  - action: shell
+    resource: "gh api*"
+    effect: ask
+  - action: shell
     resource: "git push*"
     effect: deny
   - action: shell

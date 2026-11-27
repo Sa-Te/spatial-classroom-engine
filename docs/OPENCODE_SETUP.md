@@ -175,9 +175,30 @@ permissions:
   - action: edit
     resource: ".env"
     effect: deny
+  - action: edit
+    resource: ".env.local"
+    effect: deny
+  - action: edit
+    resource: ".env.*.local"
+    effect: deny
+  - action: edit
+    resource: ".env.example"
+    effect: allow
+  - action: edit
+    resource: "docs/TASKS.md"
+    effect: deny
   - action: shell
     resource: "*"
     effect: allow
+  - action: shell
+    resource: "gh pr merge*"
+    effect: ask
+  - action: shell
+    resource: "gh repo edit*"
+    effect: ask
+  - action: shell
+    resource: "gh api*"
+    effect: ask
   - action: shell
     resource: "git push*"
     effect: deny
