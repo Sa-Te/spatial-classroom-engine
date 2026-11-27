@@ -162,19 +162,21 @@ V1 covers the session-to-lesson pipeline, deterministic playback, manipulable de
 
 ## 8. Open questions
 
+OPEN-7 is resolved. Every other item carries the phase it was deferred to, so a later session does not ask again. No item below is answered here.
+
 | ID | Question | Provenance |
 |---|---|---|
-| OPEN-1 | [OPEN] Which free TTS reliably returns word boundaries? | [DERIVED: AGENTS.md §1.19] |
-| OPEN-2 | [OPEN] What is the timing-drift ceiling in milliseconds? | [DERIVED: AGENTS.md §1.19; docs/TECHNICAL_DESIGN.md §10.3] |
-| OPEN-3 | [OPEN] Which three teacher personas launch, and who writes their voice and register? | [DERIVED: AGENTS.md §1.19] |
-| OPEN-4 | [OPEN] Does V1 include live web search or only curated knowledge? | [DERIVED: AGENTS.md §1.19] |
-| OPEN-5 | [OPEN] What is the retention window for anonymous sessions and generated lessons? | [DERIVED: AGENTS.md §1.19] |
-| OPEN-6 | [OPEN] What is the product name and domain? | [DERIVED: AGENTS.md §1.19] |
-| OPEN-7 | [OPEN] Who signs off the asset contract before custom art work begins? | [DERIVED: AGENTS.md §1.19] |
-| OPEN-8 | [OPEN] Does hand tracking ship enabled or behind a flag? | [DERIVED: AGENTS.md §1.19] |
-| OPEN-9 | [OPEN] Why is the evaluation harness Python rather than TypeScript? | [DERIVED: docs/adr/0009-typescript-app-python-eval-harness.md] |
-| OPEN-10 | [OPEN] Where does the Python harness live, what version, and how is it run in CI? | [DERIVED: docs/adr/0009-typescript-app-python-eval-harness.md] |
-| OPEN-11 | [OPEN] What is the reference device for the 30 fps floor? | [DERIVED: docs/TECHNICAL_DESIGN.md §18] |
-| OPEN-12 | [OPEN] What is the published time-to-playable target? | [DERIVED: docs/TECHNICAL_DESIGN.md §18] |
-| OPEN-13 | [OPEN] What is the exact hard per-session cost ceiling? | [DERIVED: docs/TECHNICAL_DESIGN.md §17] |
-| OPEN-14 | [OPEN] Which evaluation tiers from `docs/TECHNICAL_DESIGN.md` §16 does the Python harness cover first? | [DERIVED: docs/adr/0009-typescript-app-python-eval-harness.md] |
+| OPEN-1 | [OPEN] Which free TTS reliably returns word boundaries? — **Deferred to:** P2, consumed in P3. | [DERIVED: AGENTS.md §1.19] |
+| OPEN-2 | [OPEN] What is the timing-drift ceiling in milliseconds? — **Deferred to:** P3. | [DERIVED: AGENTS.md §1.19; docs/TECHNICAL_DESIGN.md §10.3] |
+| OPEN-3 | [OPEN] Which three teacher personas launch, and who writes their voice and register? — **Deferred to:** P4. | [DERIVED: AGENTS.md §1.19] |
+| OPEN-4 | [OPEN] Does V1 include live web search or only curated knowledge? — **Deferred to:** P2. | [DERIVED: AGENTS.md §1.19] |
+| OPEN-5 | [OPEN] What is the retention window for anonymous sessions and generated lessons? — **Deferred to:** P6. | [DERIVED: AGENTS.md §1.19] |
+| OPEN-6 | [OPEN] What is the product name and domain? — **Deferred to:** P7. | [DERIVED: AGENTS.md §1.19] |
+| OPEN-7 | **Resolved** — who signs off the asset contract before custom art work begins: the human signed the ten v1 anchor names on 2026-11-27. | [DERIVED: docs/ROADMAP.md P1 "Frozen decisions (human, 2026-11-27)"] |
+| OPEN-8 | [OPEN] Does hand tracking ship enabled or behind a flag? — **Deferred to:** P3/P4. | [DERIVED: AGENTS.md §1.19] |
+| OPEN-9 | [OPEN] Why is the evaluation harness Python rather than TypeScript? — **Deferred to:** P5. | [DERIVED: docs/adr/0009-typescript-app-python-eval-harness.md] |
+| OPEN-10 | [OPEN] Where does the Python harness live, what version, and how is it run in CI? — **Deferred to:** P5. | [DERIVED: docs/adr/0009-typescript-app-python-eval-harness.md] |
+| OPEN-11 | [OPEN] What is the reference device for the 30 fps floor? — **Deferred to:** P6. | [DERIVED: docs/TECHNICAL_DESIGN.md §18] |
+| OPEN-12 | [OPEN] What is the published time-to-playable target? — **Deferred to:** P6, measured from P2. | [DERIVED: docs/TECHNICAL_DESIGN.md §18] |
+| OPEN-13 | [OPEN] What is the exact hard per-session cost ceiling? — **Deferred to:** P6 enforced, P2 ledger. | [DERIVED: docs/TECHNICAL_DESIGN.md §17] |
+| OPEN-14 | [OPEN] Which evaluation tiers from `docs/TECHNICAL_DESIGN.md` §16 does the Python harness cover first? — **Deferred to:** P5. | [DERIVED: docs/adr/0009-typescript-app-python-eval-harness.md] |

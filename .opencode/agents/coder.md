@@ -43,6 +43,9 @@ permissions:
     effect: ask
   - action: shell
     resource: "git push*"
+    effect: ask
+  - action: shell
+    resource: "git push --force*"
     effect: deny
   - action: shell
     resource: "docker compose down -v*"
