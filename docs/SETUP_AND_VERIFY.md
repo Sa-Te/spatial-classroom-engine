@@ -558,7 +558,7 @@ import '@testing-library/jest-dom/vitest';
 Replace apps/web/src/app/page.tsx with a page that reports API health. This is not decoration — it proves the two apps can talk and gives you a visible target for step 7.
 
 ```tsx
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8081';
 
 type Health = { status: 'ok' | 'degraded'; service: string; version: string };
 
@@ -601,7 +601,7 @@ export default async function Home() {
 Create apps/web/.env.example:
 
 ```dotenv
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8081
 ```
 
 ### 8.6  VERIFY — web alone
@@ -725,7 +725,7 @@ apps/server/src/index.ts:
 ```ts
 import { buildApp } from './app.js';
 
-const port = Number(process.env.PORT ?? 8080);
+const port = Number(process.env.PORT ?? 8081);
 const app = buildApp();
 
 app
@@ -805,8 +805,8 @@ pnpm dev:server
 In a second terminal:
 
 ```bash
-curl -i http://localhost:8080/health/live
-curl -i http://localhost:8080/health/ready
+curl -i http://localhost:8081/health/live
+curl -i http://localhost:8081/health/ready
 ```
 
 **Pass looks like:**
@@ -960,7 +960,7 @@ pnpm --filter @sce/server add -D drizzle-kit @types/pg
 apps/server/.env.example:
 
 ```dotenv
-PORT=8080
+PORT=8081
 DATABASE_URL=postgres://sce:sce_dev_password@localhost:5432/sce_dev
 APP_VERSION=0.0.0
 ```
@@ -1043,7 +1043,7 @@ import 'dotenv/config';
 import { buildApp } from './app.js';
 import { createDb, pingDatabase } from './db/client.js';
 
-const port = Number(process.env.PORT ?? 8080);
+const port = Number(process.env.PORT ?? 8081);
 const { pool } = createDb(process.env.DATABASE_URL!);
 
 const app = buildApp({ isReady: () => pingDatabase(pool) });
@@ -1087,7 +1087,7 @@ docker exec -it sce-postgres psql -U sce -d sce_dev -c '\dt'
 **Proof 3 — readiness reflects reality.**
 
 ```bash
-curl -i http://localhost:8080/health/ready
+curl -i http://localhost:8081/health/ready
 ```
 
 **Pass looks like:** 200 with “database”:“up”.
@@ -1096,11 +1096,11 @@ curl -i http://localhost:8080/health/ready
 
 ```bash
 docker compose stop postgres
-curl -i http://localhost:8080/health/ready     # expect 503, database down
-curl -i http://localhost:8080/health/live      # expect 200, still ok
+curl -i http://localhost:8081/health/ready     # expect 503, database down
+curl -i http://localhost:8081/health/live      # expect 200, still ok
 docker compose start postgres
 sleep 5
-curl -i http://localhost:8080/health/ready     # expect 200 again
+curl -i http://localhost:8081/health/ready     # expect 200 again
 ```
 
 **Pass looks like:** exactly that sequence. Readiness failing while liveness passes is the entire point of having two endpoints: an orchestrator must not kill a healthy process just because its database blipped.
@@ -1148,10 +1148,10 @@ APP_VERSION=0.0.0
 MOCK_MODE=true
 
 # --- web ---
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8081
 
 # --- server ---
-PORT=8080
+PORT=8081
 DATABASE_URL=postgres://sce:sce_dev_password@localhost:5432/sce_dev
 
 # --- providers (leave empty; MOCK_MODE=true means none are required) ---
@@ -1496,9 +1496,9 @@ Print this. Tape it to the wall. Every line is one command and one expectation.
 | 6 | Install | pnpm install | completes, lockfile unchanged |
 | 7 | Database up | docker compose ps | Up (healthy) |
 | 8 | Migration applied | docker exec -it sce-postgres psql -U sce -d sce_dev -c ‘\dt’ | app_meta + __drizzle_migrations |
-| 9 | Liveness | curl -i localhost:8080/health/live | 200, “status”:“ok” |
-| 10 | Readiness up | curl -i localhost:8080/health/ready | 200, “database”:“up” |
-| 11 | Readiness down | stop Postgres, then curl -i localhost:8080/health/ready | 503, “database”:“down”; liveness still 200 |
+| 9 | Liveness | curl -i localhost:8081/health/live | 200, “status”:“ok” |
+| 10 | Readiness up | curl -i localhost:8081/health/ready | 200, “database”:“up” |
+| 11 | Readiness down | stop Postgres, then curl -i localhost:8081/health/ready | 503, “database”:“down”; liveness still 200 |
 | 12 | Web sees API | open localhost:3000 | API: ok — sce-server v0.0.0 |
 | 13 | Contract shared | break a field, pnpm typecheck | errors in **both** apps |
 | 14 | Failure UX | stop the server, reload the page | visible, actionable error — not a blank page |
@@ -1515,7 +1515,7 @@ Row 18 is the only row that cannot be faked. Do it before you declare setup fini
 | --- | --- | --- |
 | ERR_PNPM_WORKSPACE_PKG_NOT_FOUND | package name doesn’t match the workspace glob | check “name” in each package.json and pnpm-workspace.yaml |
 | pnpm install --frozen-lockfile fails in CI but works locally | pnpm-lock.yaml not committed | git add pnpm-lock.yaml |
-| Port 3000 or 8080 in use | an old process still running | lsof -i :3000 then kill &lt;pid&gt; |
+| Port 3000 or 8081 in use | an old process still running | lsof -i :3000 then kill &lt;pid&gt; |
 | ECONNREFUSED ::1:5432 | Postgres bound to IPv4 only, Node resolving localhost to IPv6 | use 127.0.0.1 in DATABASE_URL |
 | password authentication failed | .env still has the example password after you changed compose | make them match, then pnpm db:down && pnpm db:up |
 | relation “app_meta” does not exist | migrations were generated but never applied | pnpm db:migrate |
