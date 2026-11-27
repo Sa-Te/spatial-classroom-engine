@@ -8,7 +8,7 @@ Three agents, disk-based coordination, on-demand skills. The goal is **token eff
 
 > **⚠ Verify before trusting the config**
 >
-> OpenCode’s configuration surface changes between versions. Every field used here is current as documented for V2 agents (description, mode, model, permissions, steps, hidden, color, disabled, request). If a field is rejected, check the live docs rather than guessing. After writing the files, run the verification steps in §7 before starting any work.
+> OpenCode’s configuration surface changes between versions. Every field used here is current as documented for V2 agents (description, mode, model, permissions, steps, hidden, color, disabled, request). If a field is rejected, check the live docs rather than guessing. After writing the files, run the verification steps in §8 before starting any work.
 
 ## 2  What gets created
 
@@ -20,7 +20,7 @@ Three agents, disk-based coordination, on-demand skills. The goal is **token eff
 │   │   ├── architect.md           primary — plans, delegates, updates docs/TASKS.md
 │   │   ├── coder.md               subagent — executes one task, tests, verifies
 │   │   └── reviewer.md            subagent — audits a diff, returns PASS or FAIL
-│   └── skills/                    project skills (installed in §5)
+│   └── skills/                    project skills (installed in §6)
 ├── docs/TASKS.md                       the shared brain (agent-writable)
 └── AGENTS.md                      the constitution (human-owned)
 ```
@@ -299,7 +299,6 @@ Skills are loaded on demand and cost nothing until used. Install the ones that m
 | ponytail | before adding an abstraction, dependency, or config layer |
 | ponytail-review | diff review for over-engineering |
 | frontend-ui-engineering | any UI work |
-| web-design-guidelines | gate before calling a view done |
 | documentation-and-adrs | decisions and public interface changes |
 | security-and-hardening | untrusted input, uploads, third parties, secrets |
 | debugging-and-error-recovery | something that used to work |
@@ -335,7 +334,7 @@ The folder name is the skill ID and it is case-sensitive. The description in fro
 
 ### 6.4  The token-saving rule
 
-Do not preload skills. AGENTS.md §3 maps *task type → skill*; the agent loads one when the task matches. Loading five skills “just in case” costs more than it saves.
+Do not preload skills. AGENTS.md §1.4 maps *task type → skill*; the agent loads one when the task matches. Loading five skills “just in case” costs more than it saves.
 
 If an instruction names a skill that is not installed, the agent must **say which one is missing** and fall back to the written rule. Silently skipping the intent is the failure mode.
 
@@ -471,7 +470,7 @@ send the diff to @reviewer and report the verdict.
 
 ```text
 List the skills you have available, and say which of the required set from
-docs/OPENCODE_SETUP.md §5.1 are missing.
+docs/OPENCODE_SETUP.md §6.1 are missing.
 ```
 
 **Pass:** an explicit list plus an explicit missing list. An agent that claims all skills exist without listing them is guessing.
@@ -517,6 +516,34 @@ Go straight to a human conversation, bypassing the agents, when:
 - the reviewer and the coder disagree twice on the same finding
 
 Those are architecture decisions. Agents do not make them.
+
+### 9.3  Cost and escalation
+
+Pricing from `opencode api GET /api/model`, USD per million tokens:
+
+| Model | Input | Output |
+|---|---:|---:|
+| `openrouter/deepseek/deepseek-v4.1-flash-1017` | 0.15 | 0.60 |
+| `openrouter/deepseek/deepseek-v4.1-flash` | 0.14 | 0.42 |
+| `openrouter/deepseek/deepseek-v4-flash` | 0.09 | 0.18 |
+| `openrouter/deepseek/deepseek-v4-flash-0731` | 0.047 | 0.30 |
+| `openrouter/~deepseek/deepseek-flash-latest` | 0.036 | 0.50 |
+| `openrouter/~deepseek/deepseek-v4-flash-latest` | 0.047 | 0.30 |
+| `openrouter/deepseek/deepseek-v4-pro` | 0.888188 | 1.5082 |
+| `openrouter/deepseek/deepseek-v4-pro-0813` | 0.0999 | 5.00 |
+| `openrouter/~deepseek/deepseek-pro-latest` | 0.0999 | 5.00 |
+| `opencode/deepseek-v4.1-flash-free` | 0 | 0 |
+
+Flash reviews everything. Pro judges only on demand, through the manually invoked `judge` agent, never as part of the architect → coder → reviewer loop. The judge receives the diff, the task statement, and the relevant constraint sections, and is capped at 8 steps.
+
+To switch the default agents to strict zero cost, change the `model:` line in `.opencode/agents/architect.md`, `.opencode/agents/coder.md`, and `.opencode/agents/reviewer.md`:
+
+```diff
+-model: openrouter/deepseek/deepseek-v4.1-flash-1017
++model: opencode/deepseek-v4.1-flash-free
+```
+
+Trade-off, stated honestly: the free model is unproven for review quality. Free is not the same as equivalent.
 
 ## 10  What this setup deliberately does not do
 

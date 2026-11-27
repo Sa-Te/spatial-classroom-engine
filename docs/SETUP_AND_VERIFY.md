@@ -1213,26 +1213,26 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   check:
-    name: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
+      - run: corepack enable
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
 
   test:
-    name: test
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -1240,35 +1240,34 @@ jobs:
         env:
           POSTGRES_USER: sce
           POSTGRES_PASSWORD: sce_dev_password
-          POSTGRES_DB: sce_test
-        ports: ['5432:5432']
+          POSTGRES_DB: sce_dev
+        ports:
+          - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U sce -d sce_test"
+          --health-cmd "pg_isready -U sce -d sce_dev"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgres://sce:sce_dev_password@localhost:5432/sce_test
+      DATABASE_URL: postgres://sce:sce_dev_password@localhost:5432/sce_dev
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
+      - run: corepack enable
       - run: pnpm install --frozen-lockfile
+      - run: pnpm db:migrate
       - run: pnpm test
 
   build:
-    name: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
+      - run: corepack enable
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
 ```

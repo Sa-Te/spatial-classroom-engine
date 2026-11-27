@@ -68,7 +68,17 @@ cp apps/server/.env.example apps/server/.env
 
 **NEVER** Commit either file. Both are gitignored; .env.example is the template and contains no working secret.
 
-## 3  Build and TypeScript
+### 2.4  A broad .env.* deny also matches .env.example
+
+**SYMPTOM** A coder cannot create or update `.env.example`, even though it contains no secret.
+
+**CAUSE** The glob `.env.*` matches `.env.example`. A later broad allow can also silently override the deny because OpenCode permissions use last-match-wins.
+
+**FIX** Deny `.env`, `.env.local`, and `.env.*.local`; allow `.env.example` explicitly. Put the specific rule after the broad one so last-match-wins resolves to the intended effect.
+
+**NEVER** Re-broaden the deny to `.env.*` and assume `.env.example` is safe. It is matched.
+
+# 3  Build and TypeScript
 
 ### 3.1  A doubled quote in tsconfig.json reports as a Next.js config error
 

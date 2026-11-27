@@ -10,7 +10,7 @@ answers questions and hands over source-cited notes.
  
 | Document | Purpose |
 |---|---|
-| `docs/SPEC.md` | Product specification — **not yet supplied** |
+| [`docs/SPEC.md`](docs/SPEC.md) | Product specification |
 | [`AGENTS.md`](AGENTS.md) | Rules for coding agents |
 | [`TECHNICAL_DESIGN.md`](docs/TECHNICAL_DESIGN.md) | How it is built |
 | [`GOTCHAS.md`](docs/GOTCHAS.md) | Known traps |

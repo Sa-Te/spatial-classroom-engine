@@ -102,7 +102,6 @@ Skills are instructions with a known shape. Prefer loading a skill over improvis
 | **When the task is…** | **Load skill** |
 | --- | --- |
 | Anything touching UI, layout, components, styling | frontend-ui-engineering |
-| Auditing a finished view before calling it done | web-design-guidelines |
 | Writing logic, fixing a bug, or changing behaviour | test-driven-development |
 | Recording a decision or changing a public interface | documentation-and-adrs |
 | Touching auth, uploads, user input, secrets, third parties | security-and-hardening |
@@ -223,7 +222,7 @@ Three roles, isolated context, coordinated on disk. The purpose is **token effic
 
 | **Agent** | **Reads** | **May write** | **May not** |
 | --- | --- | --- | --- |
-| **architect** | SPEC.md, [TECHNICAL_DESIGN.md](docs/TECHNICAL_DESIGN.md), [ROADMAP.md](docs/ROADMAP.md), [TASKS.md](docs/TASKS.md) | [TASKS.md](docs/TASKS.md) only | Edit source, run destructive commands, invent contracts |
+| **architect** | [SPEC.md](docs/SPEC.md), [TECHNICAL_DESIGN.md](docs/TECHNICAL_DESIGN.md), [ROADMAP.md](docs/ROADMAP.md), [TASKS.md](docs/TASKS.md) | [TASKS.md](docs/TASKS.md) only | Edit source, run destructive commands, invent contracts |
 | **coder** | The one task it was given, plus the files listed for it | Source, tests, migrations within scope | Touch [TASKS.md](docs/TASKS.md), spawn agents, change contracts |
 | **reviewer** | git diff, the task, the contracts | Nothing | Edit files, approve its own findings |
 
@@ -259,7 +258,7 @@ A task with no file list, no contract reference, and no “done when” is not a
 
 ### 1.8.3  Escalate instead of guessing
 
-Stop and ask when the work requires: changing an invariant in §1, changing a public contract, choosing a data model, adding a dependency with architectural weight, or anything in §17.
+Stop and ask when the work requires: changing an invariant in §1, changing a public contract, choosing a data model, adding a dependency with architectural weight, or anything in §1.17.
 
 ## 1.9  Commands
 
@@ -383,7 +382,7 @@ If code checks NODE_ENV === ‘test’ or an injected flag only tests set, the d
 
 The product’s promise is that it feels like a place. Bad UI makes the engine invisible.
 
-- **`web-design-guidelines` is a hard gate.** A view is not done until it has been audited with that skill and the findings are resolved or explicitly deferred in writing.
+UI work is reviewed against WCAG 2.2 AA before review sign-off.
 
 - **Design tokens are the only source of colour, spacing, type, radius, and shadow.** No raw hex in a component. packages/design-tokens is the single source, consumed by DOM, canvas, and any future renderer.
 
@@ -466,7 +465,7 @@ Do not write a note after every exchange. Notes written constantly are notes nev
 
 - Write as if teaching a smart beginner. Define a term the first time it appears.
 
-- An architecture note does **not** replace the ADR required by §14. Both are written.
+- An architecture note does **not** replace the ADR required by §1.15. Both are written.
 
 ### 1.14.4  Linking (for the Obsidian graph)
 
@@ -520,7 +519,7 @@ Written in the **same pull request** as the code. A stale document is a defect.
 
 | **File** | **Holds** | **Update when** |
 | --- | --- | --- |
-| docs/SPEC.md | what the product is, V1/V2 scope | scope changes |
+| [docs/SPEC.md](docs/SPEC.md) | what the product is, V1/V2 scope | scope changes |
 | [TECHNICAL_DESIGN.md](docs/TECHNICAL_DESIGN.md) | architecture, contracts, data model, evals | shape changes |
 | [GOTCHAS.md](docs/GOTCHAS.md) | real traps with symptom → cause → fix | you lose more than 15 minutes to something |
 | [ROADMAP.md](docs/ROADMAP.md) | phases, definitions of done, tickets | a phase or ticket changes |
@@ -530,7 +529,7 @@ ADR format: context, options considered, decision, consequences (including the n
 
 Write an ADR for: deployable boundaries, durable state technology, public contracts, the coordinate convention, provider topology, retention posture, or a dependency with architectural weight.
 
-Also update, in the same PR: code comments made false by the change, the roadmap checkbox, the asset licence record if art moved, and any command in §8 that no longer works.
+Also update, in the same PR: code comments made false by the change, the roadmap checkbox, the asset licence record if art moved, and any command in §1.9 that no longer works.
 
 ## 1.16  Git
 
@@ -629,6 +628,16 @@ A milestone may be reported as explicitly partial — committed, green, and hone
 - Asset contract sign-off before custom art work begins.
 
 - Whether hand tracking ships enabled or behind a flag.
+
+## Repository search
+
+`graphify` is the required way to search or understand code. Use `graphify update .` after a structural change, `graphify query "where is X defined"` for discovery, `graphify path "A" "B"` for a dependency path, and `graphify explain "X"` for a symbol. Query the graph before grepping for a name or reading whole directories. A stale graph is worse than none; rebuild after moves and renames. The graph is a map, not evidence — read the file and quote the line before claiming behaviour. Ripgrep is acceptable only for a single known file or to filter a command's output. A task that searched with ripgrep instead of graphify is incomplete. If graphify is unavailable, fall back to ripgrep and say so once.
+
+## Documentation contract
+
+Each document is authoritative for one thing: `docs/SPEC.md` for product scope; `docs/TECHNICAL_DESIGN.md` for architecture, contracts, data, and evaluations; `docs/GOTCHAS.md` for traps; `docs/ROADMAP.md` for phase scope and order; `docs/TASKS.md` for task state; `docs/adr/` for decisions; `AGENTS.md` for rules and invariants; `docs/OPENCODE_SETUP.md` for agent configuration.
+
+A task is not done until its document updates are in the same diff. A new trap goes to `docs/GOTCHAS.md`; a behaviour or structure change goes to `docs/TECHNICAL_DESIGN.md`; an architectural decision gets a new ADR; a scope or order change goes to `docs/ROADMAP.md` with human sign-off; task state goes to `docs/TASKS.md`.
 
 ## 1.20  Final instruction
 
