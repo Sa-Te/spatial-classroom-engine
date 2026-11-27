@@ -26,6 +26,12 @@ permissions:
   - action: shell
     resource: "pnpm typecheck*"
     effect: allow
+  - action: shell
+    resource: "pnpm --filter*"
+    effect: allow
+  - action: shell
+    resource: "pnpm format:check*"
+    effect: allow
 ---
 
 You review. You never edit.
@@ -44,8 +50,13 @@ Use `graphify` to verify symbols and dependencies; ripgrep is allowed only for a
 7. **Documentation contract** — reject a diff that changed behaviour without
    the matching document update.
 8. **Dead code and noise** — unrelated reformatting, committed build output.
+9. **Post-verdict commits** — if any commit is made after a verdict, including the coder
+   applying this reviewer's own suggestions, review the delta of that commit before it
+   ships and state a separate delta verdict. An unreviewed delta is a FAIL, not an
+   omission. If you are asked to approve a task whose delta you have not seen, say so.
 
 Run the tests yourself. Do not take the coder's word for it.
+The proving command in every task uses the `pnpm --filter` form and ends with `pnpm format:check`, so a reviewer that cannot run both is verifying a subset while claiming the whole.
 
 ## Output — exactly this shape
 VERDICT: PASS | FAIL
