@@ -365,11 +365,11 @@ docker compose start postgres
 
 ### 7.4  The reviewer's shell rules silently stopped applying in one session
 
-**SYMPTOM** Every command the reviewer ran returned `Permission denied: shell`, including `pnpm test` and `pnpm typecheck`, which are explicitly allowed and had worked in an earlier reviewer session. The verdict reported the unrun checks as blocking findings.
+**SYMPTOM** Every command the reviewer ran returned `Permission denied: shell`, including `pnpm test` and `pnpm typecheck`, which are explicitly allowed. It is intermittent: it has cleared in a fresh session after one denial, and it has also survived two consecutive fresh invocations on the same task, which left a post-fix tree with no independent execution.
 
 **CAUSE** Not established. No configuration changed: the same rules, read from disk, allow the same commands, and the identical commands succeeded immediately in a fresh reviewer session with no edit.
 
-**FIX** Treat it as a process failure, not a code finding. Re-invoke the reviewer once in a fresh session; if the denial repeats, stop and report to the human.
+**FIX** Treat it as a process failure, not a code finding. Re-invoke once in a fresh session. If the denial repeats, stop, report to the human, and do not describe the task as reviewed — CI still gives an independent execution of the suite, but an execution is not a review.
 
 **NEVER** Widen permissions to "fix" it, and never read the denial as evidence about the diff. The rules were already correct.
 
@@ -394,3 +394,13 @@ docker compose start postgres
 ### 8.3  Adding an entry
 
 Copy the four-part shape. Be specific enough that the symptom is greppable. If you cannot name a symptom someone would search for, the entry probably belongs in an ADR instead.
+
+### 8.4  Inserting text above a heading retypes the heading and loses its en spaces
+
+**SYMPTOM** A diff that only adds a section shows the heading below the new text as both removed and re-added, although it looks identical. `--ignore-all-space` still reports it as changed.
+
+**CAUSE** The headings in these documents use U+2002 between the number and the title. A writer that reproduces the heading from memory emits ASCII spaces, so the bytes change while the appearance does not.
+
+**FIX** Never retype an existing line. Insert with a script anchored on the preceding line, or rebuild the file from `git show origin/main:<path>` and splice the new block in. Verify with `git diff origin/main -- <path>`: a pure insertion has no `-` lines.
+
+**NEVER** Reformat or retype the heading you are inserting above. This has happened three times in this repository.

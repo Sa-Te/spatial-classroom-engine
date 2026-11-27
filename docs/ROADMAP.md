@@ -52,7 +52,7 @@ Signed off with P1. These are decided. A later phase does not re-open them, does
 | --- | --- |
 | Q1 | PrimitiveId is a closed union of the 9 core primitive ids only. Deferred ids are absent from the type. |
 | Q2 | Primitive id strings are dotted, for example teacher.point. |
-| Q3 | Cue.params is a discriminated union keyed on primitive id. ADR 0015 and TECHNICAL_DESIGN section 8.2 change in the same pull request as the code. |
+| Q3 | Cue.params is a discriminated union keyed on primitive id. ADR 0016 and TECHNICAL_DESIGN section 8.2 change in the same pull request as the code. |
 | Q4 | The camera framing enum is exactly: wideSideProfile, mediumFront, closeUpFace, wideHighAngle, overShoulderBoard. |
 | Q5 | sunSide is dropped. It is derived from keyFromSun. |
 | Q6 | WordTiming is { word: string; startMs: number; endMs: number }. wordIndex is the array position and is never stored. |
@@ -66,6 +66,13 @@ Signed off with P1. These are decided. A later phase does not re-open them, does
 | S2 | P1 keeps src-only package exports. Package builds become the first P2 task. |
 | OPEN-7 | The ten anchor names are signed as the v1 asset contract: sun, earth, earth.axis, earth.patch, teacher.root, teacher.hand.left, teacher.hand.right, teacher.eyes, learner.camera, board.surface. Rig, clip and LOD conventions are deferred to P3. |
 | PR policy | "One phase per pull request" means never mix two phases in one pull request. Within P1, one task per pull request, unless two adjacent tasks cannot be split because they change the same file's public shape in the same step — then the reason is stated in the pull-request body. Every pull request states its own revert story. |
+| T4-Q1 | SceneObject in P1 is a thin envelope: id and kind. Per-kind payload (radius, endpoints, text, image reference) lands in P3 with the renderer that consumes it. |
+| T4-Q2 | light.keyFromSun owns sunElevationDeg. LightSpec carries identity only. The design must not have two authoring sites for one number. |
+| T4-Q3 | The anchors schema accepts any non-empty string array. Unknown anchor names are rejected at scene-graph load in T14, not by the schema, because a schema could only pin the signed ten if every scene used all ten. |
+| T4-Q4 | Manipulable.unit is a non-empty string, not a closed enum. Its three values in use are not pinned in tests because the design never states the unit of orbitSpeed. |
+| T4-shape | SceneObject, LightSpec and Manipulable are strict schemas: an unknown key is a parse failure, so absence of a field is testable. Relaxing strictness later requires an ADR. |
+| T4-units | Vec3 and src/units.ts move from T4 to T14, where an anchor transform first consumes them. |
+| ADR-renumber | ADR 0015 records the minimal scene-identity decision. The discriminated-union change to Cue.params becomes ADR 0016 at T6. |
 
 The ten anchor names in OPEN-7 are frozen because renaming an anchor is a breaking change requiring an ADR (`AGENTS.md` §1.7.3; `docs/TECHNICAL_DESIGN.md` §11), so signing them now costs nothing and prevents an invented set later.
 
@@ -73,7 +80,7 @@ Q7 and Q12 are deliberately unanswered. They are deferred scope, not decisions, 
 
 Amended 2026-11-27 after T1: T1 shipped as its own pull request (`3e977bd`), not inside a bundled first pull request. The six-pull-request sketch in the original sign-off is superseded by the one-task-per-pull-request rule above. The phase scope and every definition of done are unchanged.
 
-`LessonPlan` gains `topic: TopicRef` at T6 under ADR 0015, together with the discriminated-union change to `Cue.params`. Until T6 the current shape — `evidencePacketId` and no `topic` — is not final.
+`LessonPlan` gains `topic: TopicRef` at T6 under ADR 0016, together with the discriminated-union change to `Cue.params`. Until T6 the current shape — `evidencePacketId` and no `topic` — is not final.
 
 **In scope**
 - Zod schemas and inferred types in `packages/contracts` for `EvidencePacket`, `LessonPlan`, `SceneSpec`, `CueSheet`, `PrimitiveId`, and API error shapes. [DERIVED: docs/TECHNICAL_DESIGN.md §5, §6, §7, §8, §9, §14]

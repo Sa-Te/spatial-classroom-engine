@@ -243,7 +243,19 @@ export interface Manipulable {
   min: number; max: number; default: number; unit: string;
   affordance: "grab" | "slider" | "both";
 }
+
+export interface SceneObject {
+  id: string;                        // identity only in P1; per-kind payload lands in P3
+  kind: "sphere" | "line" | "label" | "still";
+}
+
+export interface LightSpec {
+  id: string;
+  kind: "sun";
+}
 ```
+
+Elevation is cue-owned: `light.keyFromSun` is the single authoring site for `sunElevationDeg`, and `LightSpec` carries identity only (T4-Q2, ADR 0015).
 
 ### 8.2  CueSheet — what happens, and when
 
@@ -433,7 +445,7 @@ export interface SceneGraph {
 
 ### 12.1  One motivated light
 
-The sun is a single directional light. Its elevation is a scene parameter. **Shadow length is derived:**
+The sun is a single directional light. Its elevation is cue-owned by `light.keyFromSun` (§8.1, ADR 0015). **Shadow length is derived:**
 
 ```text
 shadowLength = objectHeight / tan(sunElevationDeg × π / 180)

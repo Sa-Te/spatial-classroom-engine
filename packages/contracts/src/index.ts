@@ -20,3 +20,13 @@ export {
   type LessonPlan,
   type SceneBrief,
 } from './lesson.js';
+export {
+  LightSpecSchema,
+  ManipulableSchema,
+  SceneObjectSchema,
+  SceneSpecSchema,
+  type LightSpec,
+  type Manipulable,
+  type SceneObject,
+  type SceneSpec,
+} from './scene-spec.js';
