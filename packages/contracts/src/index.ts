@@ -30,3 +30,13 @@ export {
   type SceneObject,
   type SceneSpec,
 } from './scene-spec.js';
+export {
+  CueSchema,
+  CueSheetSchema,
+  UtteranceScriptSchema,
+  WordTimingSchema,
+  type Cue,
+  type CueSheet,
+  type UtteranceScript,
+  type WordTiming,
+} from './cue-sheet.js';
