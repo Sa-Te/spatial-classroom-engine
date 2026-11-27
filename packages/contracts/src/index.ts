@@ -40,3 +40,17 @@ export {
   type UtteranceScript,
   type WordTiming,
 } from './cue-sheet.js';
+export {
+  CameraCutSchema,
+  CameraFramingSchema,
+  CameraLockOffSchema,
+  PrimitiveIdSchema,
+  TeacherLookAtSchema,
+  TeacherPointSchema,
+  type CameraCut,
+  type CameraFraming,
+  type CameraLockOff,
+  type PrimitiveId,
+  type TeacherLookAt,
+  type TeacherPoint,
+} from './primitives/index.js';
