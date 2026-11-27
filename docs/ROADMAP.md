@@ -1,6 +1,6 @@
 # ROADMAP
 
-> **DERIVED ROADMAP.** This roadmap is derived from `AGENTS.md`, `docs/TECHNICAL_DESIGN.md`, and `docs/adr/`. It is not a supplied plan. **Human sign-off is required before any P1 task may be added to `docs/TASKS.md`.** Every phase beyond P0 is `status: not-started`, `agreed: pending-human`.
+> **DERIVED ROADMAP.** This roadmap is derived from `AGENTS.md`, `docs/TECHNICAL_DESIGN.md`, and `docs/adr/`. It is not a supplied plan. **Human sign-off is required before any P1 task may be added to `docs/TASKS.md`.** P1 is agreed (human, 2026-11-27); every phase beyond P1 is `status: not-started`, `agreed: pending-human`.
 
 Phases are ordered by dependency. Each phase has a definition of done and a scope-cut rule: if a phase exceeds twice its effort estimate, cut scope — never extend the phase.
 
@@ -40,9 +40,36 @@ Phases are ordered by dependency. Each phase has a definition of done and a scop
 
 ## P1 — Contracts and pure core
 
-**Status:** not-started  
-**Agreed:** pending-human  
+**Status:** agreed  
+**Agreed:** human, 2026-11-27  
 **Objective:** freeze the shapes and pure logic that every later phase depends on: contracts, timeline resolution, scene graph, anchors, primitive registry, and the clock port.
+
+### Frozen decisions (human, 2026-11-27)
+
+Signed off with P1. These are decided. A later phase does not re-open them, does not soften them, and does not re-litigate them with alternatives. Reversing one requires an ADR that supersedes this record.
+
+| ID | Decision |
+| --- | --- |
+| Q1 | PrimitiveId is a closed union of the 9 core primitive ids only. Deferred ids are absent from the type. |
+| Q2 | Primitive id strings are dotted, for example teacher.point. |
+| Q3 | Cue.params is a discriminated union keyed on primitive id. ADR 0015 and TECHNICAL_DESIGN section 8.2 change in the same pull request as the code. |
+| Q4 | The camera framing enum is exactly: wideSideProfile, mediumFront, closeUpFace, wideHighAngle, overShoulderBoard. |
+| Q5 | sunSide is dropped. It is derived from keyFromSun. |
+| Q6 | WordTiming is { word: string; startMs: number; endMs: number }. wordIndex is the array position and is never stored. |
+| Q7 | camera pushIn.from/to, pullOut.to and cut.to are deferred to P3. |
+| Q8 | The validator rejects a camera.* primitive id on a teacher track. |
+| Q9 | scene.setParam takes effect at atMs and holds until the next cue touching the same parameter. A second setParam inside that window with no intervening animateParam is rejected. |
+| Q10 | Manipulable.parameter is a closed set of axisTiltDeg, orbitSpeed and sunElevationDeg. A scene declares which of them it exposes. |
+| Q11 | light.keyFromSun accepts 1 to 90 inclusive and rejects 0. The shadow clamp constant belongs to the P3 physics helper and is documented there. |
+| Q12 | camera.orbitArc.degrees sign convention and bound are deferred to P3. |
+| S1 | P1 asserts entriesDueAt(timeline, atMs) over resolved entries, not world state. The world.teacher.pointTarget assertion belongs to P3. |
+| S2 | P1 keeps src-only package exports. Package builds become the first P2 task. |
+| OPEN-7 | The ten anchor names are signed as the v1 asset contract: sun, earth, earth.axis, earth.patch, teacher.root, teacher.hand.left, teacher.hand.right, teacher.eyes, learner.camera, board.surface. Rig, clip and LOD conventions are deferred to P3. |
+| PR policy | "One phase per pull request" means never mix two phases in one pull request. P1 ships as six pull requests. |
+
+The ten anchor names in OPEN-7 are frozen because renaming an anchor is a breaking change requiring an ADR (`AGENTS.md` §1.7.3; `docs/TECHNICAL_DESIGN.md` §11), so signing them now costs nothing and prevents an invented set later.
+
+Q7 and Q12 are deliberately unanswered. They are deferred scope, not decisions, and a later phase must not treat them as settled.
 
 **In scope**
 - Zod schemas and inferred types in `packages/contracts` for `EvidencePacket`, `LessonPlan`, `SceneSpec`, `CueSheet`, `PrimitiveId`, and API error shapes. [DERIVED: docs/TECHNICAL_DESIGN.md §5, §6, §7, §8, §9, §14]
