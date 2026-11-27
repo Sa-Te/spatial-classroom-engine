@@ -155,12 +155,23 @@ export interface Claim {
 
 export interface Source {
   id: string;                        // "s1"
-  url: string;
+  url: string;                       // absolute URL
   title: string;
   publisher: string;
-  retrievedAt: string;
+  retrievedAt: string;               // ISO 8601
   excerpt: string;                   // the sentence the claim came from
   licence?: string;
+}
+
+export interface TopicRef {
+  id: string;
+  rawText: string;                   // the learner's words, echoed back by the lesson
+}
+
+export interface Misconception {
+  id: string;                        // "m1"
+  text: string;                      // "Seasons are caused by distance from the Sun"
+  correctedByClaimIds: string[];     // claim ids that overturn it
 }
 ```
 
