@@ -14,13 +14,36 @@ export {
   type TeacherLookAt,
   type TeacherPoint,
 } from './teacher.js';
+export {
+  AxisParameterSchema,
+  SceneAnimateParamSchema,
+  SceneSetParamSchema,
+  type AxisParameter,
+  type SceneAnimateParam,
+  type SceneSetParam,
+} from './scene.js';
+export { LightKeyFromSunSchema, type LightKeyFromSun } from './light.js';
+export {
+  LearnerEnableGrabSchema,
+  LearnerHoldSilenceSchema,
+  type LearnerEnableGrab,
+  type LearnerHoldSilence,
+} from './learner.js';
+export {
+  PrimitiveTrackSchema,
+  lookupPrimitive,
+  primitiveRegistry,
+  type PrimitiveEntry,
+  type PrimitiveLookup,
+  type PrimitiveTrack,
+} from './registry.js';
 
 // Q1/Q2: the closed nine, dotted. Deferred primitives are absent from the type
 // rather than present and unvalidated — adding one means shipping its schema and
 // validator in the same change.
 //
-// ponytail: a lookup from id to parameter schema arrives at T6B with the
-// Cue.params discriminated union, which is the first consumer of that lookup.
+// registry.ts maps each id to its schema and track (T7). The Cue.params
+// discriminated union that consumes it arrives at T6B.
 export const PrimitiveIdSchema = z.enum([
   'camera.lockOff',
   'camera.cut',
