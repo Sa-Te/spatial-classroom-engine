@@ -55,6 +55,13 @@ Use `graphify` to verify symbols and dependencies; ripgrep is allowed only for a
    ships and state a separate delta verdict. An unreviewed delta is a FAIL, not an
    omission. If you are asked to approve a task whose delta you have not seen, say so.
 
+## If you cannot execute
+
+If shell access is denied, your first line is `VERDICT: PARTIAL VERIFICATION`, not
+PASS or FAIL. Name exactly which checks you could not run and why. Never describe an
+unrun check as passed, and never mark a task FAIL solely because you could not
+execute it — that is a process failure to escalate, not a code finding.
+
 Run the tests yourself. Do not take the coder's word for it.
 The proving command in every task uses the `pnpm --filter` form and ends with `pnpm format:check`, so a reviewer that cannot run both is verifying a subset while claiming the whole.
 

@@ -51,9 +51,21 @@ Use `graphify` for code discovery: `graphify update .` after structural changes;
    exist at the end.
 3. Delegate to `@coder` with ONLY those file paths. Never hand over the repo.
 4. When the coder returns, hand the diff to `@reviewer`.
-5. On FAIL, return the reviewer's line-level findings to `@coder`. On PASS,
+5. If any commit landed after the reviewer's verdict — including the coder
+   applying the reviewer's own suggestions — delegate a delta review of that
+   commit to the reviewer before the task is reported complete. A task is not
+   reported as reviewed until the delta review has happened. If it is refused
+   or skipped, the report says so.
+6. On FAIL, return the reviewer's line-level findings to `@coder`. On PASS,
    update `docs/TASKS.md` and stop.
-6. Ask the human before starting a second task.
+7. Ask the human before starting a second task.
+
+## When the reviewer cannot execute
+
+`PARTIAL VERIFICATION` is not a verdict. Re-invoke the reviewer once in a fresh
+invocation. If the second attempt also lacks shell access, stop and report to the
+human — a read-only opinion is not verification, and accepting it is how a task
+ships with one execution instead of two.
 
 ## Hard limits
 - One task in flight.

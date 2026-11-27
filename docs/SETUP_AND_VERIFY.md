@@ -26,7 +26,7 @@ You are finished with this document when **all fourteen** of these are true:
 
 | **#** | **Condition** |
 | --- | --- |
-| 1 | Git is configured pswith your name, email, and a working SSH key |
+| 1 | Git is configured with your name, email, and working git credentials |
 | 2 | A public GitHub repository exists and is protected on main |
 | 3 | pnpm install completes from a clean clone |
 | 4 | pnpm dev starts both web and server |
@@ -87,7 +87,7 @@ psql --version
 
 Record the exact versions you installed. You will pin them in Step 6.
 
-## 4  Step 2 — Git identity and SSH
+## 4  Step 2 — Git identity and credentials
 
 ### 4.1  Identity
 
@@ -117,7 +117,16 @@ git config --global core.excludesfile ~/.gitignore_global
 printf '.DS_Store\nThumbs.db\n.idea/\n.vscode/\n*.swp\n' > ~/.gitignore_global
 ```
 
-### 4.2  SSH key
+### 4.2  Credentials: HTTPS through `gh`, or SSH
+
+HTTPS is the default, because it works in an unattended session: `gh` holds the token and git asks it for credentials.
+
+```bash
+gh auth login       # GitHub.com → HTTPS → login with browser
+gh auth setup-git   # github.com now resolves credentials through gh
+```
+
+**If you prefer SSH**, this is the path — it needs an agent in the shell that pushes:
 
 ```bash
 ssh-keygen -t ed25519 -C "akkireddytj@gmail.com"
@@ -125,17 +134,15 @@ ssh-keygen -t ed25519 -C "akkireddytj@gmail.com"
 eval "$(ssh-agent -s)"                                        # run this in the shell that will push
 ssh-add ~/.ssh/id_ed25519                                     # enter the passphrase once
 gh ssh-key add ~/.ssh/id_ed25519.pub --title "$(hostname)"    # upload the public key
-gh auth login                                                 # GitHub.com, and SSH when asked for the git protocol
 ```
 
-> **The agent lives in one shell, not on the machine.** `eval "$(ssh-agent -s)"` exports `SSH_AUTH_SOCK` into the shell that ran it. Any separate process — an editor, a CI runner, an agent session — does not inherit it. A passphrase-protected key therefore cannot be unlocked there, and `ssh -T git@github.com` will fail even though the key is registered.
+> **The SSH agent lives in one shell, not on the machine.** `eval "$(ssh-agent -s)"` exports `SSH_AUTH_SOCK` into the shell that ran it. Any separate process — an editor, a CI runner, an agent session — does not inherit it. A passphrase-protected key therefore cannot be unlocked there, and `ssh -T git@github.com` fails even though the key is registered. That is why HTTPS is the default here.
 
 ### 4.3  VERIFY
 
 ```bash
 git config --global user.name //Sa-Te
 git config --global user.email //kennyukking@gmail.com
-ssh -T git@github.com
 gh auth status
 ```
 
@@ -143,11 +150,11 @@ gh auth status
 
 - Your name and email print back.
 
-- ssh -T prints **`Hi Sa-Te! You’ve successfully authenticated, but GitHub does not provide shell access.`** That sentence is a success, not an error.
+- gh auth status shows you logged in as **Sa-Te** with the repo and workflow scopes, over HTTPS.
 
-- gh auth status shows you logged in with the repo and workflow scopes.
+- If you chose SSH: `ssh -T git@github.com` prints **`Hi Sa-Te! You’ve successfully authenticated, but GitHub does not provide shell access.`** That sentence is a success, not an error.
 
-**If it fails:** *Permission denied (publickey)* has two causes and they look identical. If `ssh_askpass: exec(/usr/bin/ssh-askpass): No such file or directory` appears first, the key is passphrase-protected and no agent holds it — load the agent in this shell with `eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519`. Otherwise the public key is not on the account — check `gh ssh-key list` before adding anything, because the key is often already there.
+**If it fails:** SSH only — *Permission denied (publickey)* has two causes and they look identical. If `ssh_askpass: exec(/usr/bin/ssh-askpass): No such file or directory` appears first, the key is passphrase-protected and no agent holds it — load the agent in this shell with `eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519`. Otherwise the public key is not on the account — check `gh ssh-key list` before adding anything, because the key is often already there.
 
 ## 5  Step 3 — Create the GitHub repository
 
@@ -267,16 +274,16 @@ gh repo view --web
 
 **Pass looks like:**
 
-- origin  git@github.com:Sa-Te/spatial-classroom-engine.git (push) — the **SSH** form, not HTTPS.
+- origin  https://github.com/Sa-Te/spatial-classroom-engine.git (push) — the **HTTPS** form; `gh auth setup-git` supplies the credentials.
 
 - One commit in the log.
 
 - The repo opens in your browser with your README rendered.
 
-**If it fails:** if the remote is an https:// URL, fix it now — authentication friction later is not worth it:
+**If it fails:** if the remote is an ssh:// URL, fix it now — an unattended session cannot unlock a passphrase-protected key:
 
 ```bash
-git remote set-url origin git@github.com:Sa-Te/spatial-classroom-engine.git
+git remote set-url origin https://github.com/Sa-Te/spatial-classroom-engine.git
 ```
 
 ## 6  Step 4 — Repository settings and branch protection
@@ -1492,8 +1499,8 @@ Print this. Tape it to the wall. Every line is one command and one expectation.
 | --- | --- | --- | --- |
 | 1 | Prerequisites | node -v && pnpm -v && docker --version | three versions, no errors |
 | 2 | Git identity | git config --global user.email | your address |
-| 3 | SSH | eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519 && ssh -T git@github.com | Hi Sa-Te! You’ve successfully authenticated |
-| 4 | Remote | git remote -v | git@github.com:... |
+| 3 | Credentials | gh auth status | logged in as Sa-Te, repo + workflow scopes, protocol https |
+| 4 | Remote | git remote -v | https://github.com/Sa-Te/… |
 | 5 | Protection | gh api repos/Sa-Te/spatial-classroom-engine/branches/main/protection | JSON, not 404 |
 | 6 | Install | pnpm install | completes, lockfile unchanged |
 | 7 | Database up | docker compose ps | Up (healthy) |
@@ -1550,9 +1557,9 @@ Tick every line. When they are all ticked, the setup phase is complete and the n
 
 ☐ Git name, email, and user.email privacy choice made
 
-☐ SSH key uploaded; ssh -T git@github.com authenticates
+☐ gh authenticated; git fetch origin works with no prompt
 
-☐ Public repo created, remote is SSH, README and LICENSE committed
+☐ Public repo created, remote is HTTPS, README and LICENSE committed
 
 ☐ main protected; force pushes blocked; squash merges only
 

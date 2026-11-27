@@ -363,7 +363,17 @@ docker compose start postgres
 
 **FIX** graphify update . after any structural change. Treat graph edges as a map, never as evidence — read the file before claiming behaviour.
 
-## 8  Process
+### 7.4  The reviewer's shell rules silently stopped applying in one session
+
+**SYMPTOM** Every command the reviewer ran returned `Permission denied: shell`, including `pnpm test` and `pnpm typecheck`, which are explicitly allowed and had worked in an earlier reviewer session. The verdict reported the unrun checks as blocking findings.
+
+**CAUSE** Not established. No configuration changed: the same rules, read from disk, allow the same commands, and the identical commands succeeded immediately in a fresh reviewer session with no edit.
+
+**FIX** Treat it as a process failure, not a code finding. Re-invoke the reviewer once in a fresh session; if the denial repeats, stop and report to the human.
+
+**NEVER** Widen permissions to "fix" it, and never read the denial as evidence about the diff. The rules were already correct.
+
+## 8  Process
 
 ### 8.1  “It works” without the command is not a report
 
