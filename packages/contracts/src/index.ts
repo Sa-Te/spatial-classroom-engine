@@ -54,3 +54,23 @@ export {
   type TeacherLookAt,
   type TeacherPoint,
 } from './primitives/index.js';
+export {
+  AxisParameterSchema,
+  LearnerEnableGrabSchema,
+  LearnerHoldSilenceSchema,
+  LightKeyFromSunSchema,
+  PrimitiveTrackSchema,
+  SceneAnimateParamSchema,
+  SceneSetParamSchema,
+  lookupPrimitive,
+  primitiveRegistry,
+  type AxisParameter,
+  type LearnerEnableGrab,
+  type LearnerHoldSilence,
+  type LightKeyFromSun,
+  type PrimitiveEntry,
+  type PrimitiveLookup,
+  type PrimitiveTrack,
+  type SceneAnimateParam,
+  type SceneSetParam,
+} from './primitives/index.js';

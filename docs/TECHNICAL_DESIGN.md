@@ -352,6 +352,8 @@ The closed set the AI may compose from. Each entry has a parameter schema, a val
 
 **Growth rule:** a new primitive ships with schema, validator, executor, and a test that proves the validator rejects a bad parameter. Never add a primitive without its rejection case.
 
+Scene-aware checks are not schema work. `scene.setParam` cannot verify a value against a scene's declared `Manipulable` range, and `learner.enableGrab` cannot verify that its parameter is declared or that its object exists: both need a scene graph and are T15 obligations. The window-overlap rule for a second `setParam` on one parameter is T12's.
+
 ## 10  Timeline resolution
 
 ### 10.1  The signature
