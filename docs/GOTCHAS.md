@@ -100,6 +100,20 @@ git -c credential.helper='!gh auth git-credential' push https://github.com/<owne
 
 **NEVER** Re-register the key as a first reaction, and never `git remote set-url` as a workaround. The key was already on the account, so re-adding changes nothing and buries the real cause; and the remote is documented as SSH.
 
+### 2.6  An explicit-URL fetch prunes origin/main when fetch.prune is on
+
+**SYMPTOM** `git fetch <url> main:refs/remotes/origin/main` prints `- [deleted] (none) -> origin/main` before recreating it, so the next command sees a missing ref or a fast-forward that refuses.
+
+**CAUSE** `fetch.prune=true` is set globally (`SETUP_AND_VERIFY.md` §4.1). Pruning applies to the destination namespace even when the source is an explicit URL rather than `origin`.
+
+**FIX**
+
+```bash
+git -c fetch.prune=false -c credential.helper='!gh auth git-credential' fetch https://github.com/<owner>/<repo>.git main:refs/remotes/origin/main
+```
+
+**NEVER** Treat the delete as harmless and continue. Re-fetch with pruning off before branching or merging.
+
 # 3  Build and TypeScript
 
 ### 3.1  A doubled quote in tsconfig.json reports as a Next.js config error

@@ -65,11 +65,13 @@ Signed off with P1. These are decided. A later phase does not re-open them, does
 | S1 | P1 asserts entriesDueAt(timeline, atMs) over resolved entries, not world state. The world.teacher.pointTarget assertion belongs to P3. |
 | S2 | P1 keeps src-only package exports. Package builds become the first P2 task. |
 | OPEN-7 | The ten anchor names are signed as the v1 asset contract: sun, earth, earth.axis, earth.patch, teacher.root, teacher.hand.left, teacher.hand.right, teacher.eyes, learner.camera, board.surface. Rig, clip and LOD conventions are deferred to P3. |
-| PR policy | "One phase per pull request" means never mix two phases in one pull request. P1 ships as six pull requests. |
+| PR policy | "One phase per pull request" means never mix two phases in one pull request. Within P1, one task per pull request, unless two adjacent tasks cannot be split because they change the same file's public shape in the same step — then the reason is stated in the pull-request body. Every pull request states its own revert story. |
 
 The ten anchor names in OPEN-7 are frozen because renaming an anchor is a breaking change requiring an ADR (`AGENTS.md` §1.7.3; `docs/TECHNICAL_DESIGN.md` §11), so signing them now costs nothing and prevents an invented set later.
 
 Q7 and Q12 are deliberately unanswered. They are deferred scope, not decisions, and a later phase must not treat them as settled.
+
+Amended 2026-11-27 after T1: T1 shipped as its own pull request (`3e977bd`), not inside a bundled first pull request. The six-pull-request sketch in the original sign-off is superseded by the one-task-per-pull-request rule above. The phase scope and every definition of done are unchanged.
 
 **In scope**
 - Zod schemas and inferred types in `packages/contracts` for `EvidencePacket`, `LessonPlan`, `SceneSpec`, `CueSheet`, `PrimitiveId`, and API error shapes. [DERIVED: docs/TECHNICAL_DESIGN.md §5, §6, §7, §8, §9, §14]
