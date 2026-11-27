@@ -6,3 +6,6 @@ pnpm-lock.yaml
 next-env.d.ts
 *.md
 
+
+# vendored agent skills
+.agents
