@@ -1,5 +1,5 @@
 ---
-description: Audits a diff against the task, the contracts, and AGENTS.md; returns PASS or FAIL
+description: Audits a diff against the task, the contracts, and AGENTS.md; returns PASS, FAIL, or PARTIAL VERIFICATION
 mode: subagent
 model: openrouter/deepseek/deepseek-v4.1-flash-1017
 steps: 15
