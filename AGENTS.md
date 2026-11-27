@@ -639,6 +639,15 @@ Each document is authoritative for one thing: `docs/SPEC.md` for product scope; 
 
 A task is not done until its document updates are in the same diff. A new trap goes to `docs/GOTCHAS.md`; a behaviour or structure change goes to `docs/TECHNICAL_DESIGN.md`; an architectural decision gets a new ADR; a scope or order change goes to `docs/ROADMAP.md` with human sign-off; task state goes to `docs/TASKS.md`.
 
+## Pull request policy
+
+- One phase per pull request. A PR that spans two phases is split.
+- Size budget for hand-written code: target under about 400 changed lines, excluding tests, generated files, and vendored third-party files. Going over needs a stated reason in the PR body.
+- A PR must carry its own documentation updates (see the Documentation contract). No behaviour change without the matching document change.
+- Never mix vendored or generated bulk with hand-written code in the same PR.
+- Every PR states its revert story: what to revert and whether reverting is safe.
+- Merge strategy: merge commit, preserving the branch commits. No squash, no rebase.
+
 ## 1.20  Final instruction
 
 When architecture, commands, behaviour, contracts, setup, assets, privacy, or providers change, update **this file**, the technical design, the gotchas, the ADRs, the diagrams, the roadmap status, and the comments that are now wrong — before declaring the work complete.

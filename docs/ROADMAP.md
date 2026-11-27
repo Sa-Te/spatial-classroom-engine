@@ -10,6 +10,8 @@ Phases are ordered by dependency. Each phase has a definition of done and a scop
 **Agreed:** human  
 **Objective:** a clean clone runs web and server, health endpoints report correctly, database-backed readiness is proven, and CI is green on a real PR.
 
+**Closure:** Setup closed with merge commit history preserved; the pull request policy in `AGENTS.md` governs every later phase.
+
 **In scope**
 - pnpm workspace, TypeScript, Next.js web, Fastify server, shared `@sce/contracts`.
 - PostgreSQL with Drizzle migrations and `/health/live` + `/health/ready`.
