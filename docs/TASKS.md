@@ -10,16 +10,7 @@ Phase definition of done: `docs/ROADMAP.md` P1 — `pnpm verify`, the named test
 
 ## Ready
 
-### T1 — Contracts toolchain, zod, and the API error shape
-
-- **Status:** ready
-- **Files:** `packages/contracts/package.json`, `packages/contracts/tsconfig.json`, `packages/contracts/vitest.config.ts` (environment `node`), `packages/contracts/src/errors.ts`, `packages/contracts/src/errors.test.ts`, `packages/contracts/src/index.ts`, `pnpm-lock.yaml`
-- **Contract:** `ApiErrorSchema` in `packages/contracts/src/errors.ts` (new — this task creates it). The payload shape is fixed by `docs/TECHNICAL_DESIGN.md` §14 and is not negotiable.
-- **Done when:** `ApiErrorSchema` parses the TECHNICAL_DESIGN §14 example exactly; it rejects a payload missing `requestId`, a non-boolean `retryable`, and a code not matching `^[A-Z][A-Z0-9_]*$`; the package has `test` and `typecheck` scripts so a root `pnpm -r test` can no longer pass silently.
-- **Out of scope:** every other contract schema (evidence, lesson, scene spec, cue sheet, primitives); any runtime import from `apps/*`; any change under `apps/`; any P2 or later work.
-- **Proving command:** `pnpm --filter @sce/contracts exec vitest run src/errors.test.ts && pnpm typecheck && pnpm format:check`
-- **Skill:** test-driven-development
-- **Estimated:** about 130 changed lines
+(nothing — the next task is proposed by the architect and requires human sign-off before it is written here)
 
 ## Done
 
@@ -35,6 +26,6 @@ Phase definition of done: `docs/ROADMAP.md` P1 — `pnpm verify`, the named test
 - 19a684c — ci: add check test and build workflow
 - d92faa8 — chore: add pull request template and opencode config
 
-### P1 — contracts and pure core (agreed, not started)
+### P1 — contracts and pure core (agreed, 2026-11-27)
 
-(nothing)
+- T1 — Contracts toolchain, zod, and the API error shape — `feat(contracts): add the API error schema and package toolchain` (branch `feat/contracts-errors`). Proving command: `pnpm --filter @sce/contracts exec vitest run src/errors.test.ts && pnpm typecheck && pnpm format:check`. Review: PASS (reviewer), 8 tests.
