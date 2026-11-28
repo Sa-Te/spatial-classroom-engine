@@ -96,5 +96,5 @@ Phase definition of done: `docs/ROADMAP.md` P1 — `pnpm verify`, the named test
   - Purity coverage proved by a temporary `Date.now()` reporting `src/fallback.ts:61 Date.now`, then green after removal; no second purity test.
   - T10 tests: all 14 survive, re-shaped to the utterance table; two renamed (`marks every exactly placed entry approximate: false…`, `rejects a cue whose utterance timings are null and whose duration was never measured`); none deleted. `timeline.test.ts` is unchanged because it constructs no `Timeline` and a compile-time fixture there would assert a constant (§1.10.2).
   - Size: extraction estimated 240 non-test lines (under the 280 gate); actual non-test changed lines are 307, the overage in §10.3 and the resolver's problem-detail helpers. Recorded, not hidden.
-  - Known doc debt, outside T11's §10.2/§10.3 scope: §10.1 still shows `resolveTimeline(cueSheet, utteranceTimings: Record<string, WordTiming[] | null>)`, which now contradicts §10.2 and wants its own decision.
+  - Doc debt paid in PR #25: §10.1's pre-T11 `resolveTimeline(cueSheet, utteranceTimings)` contradicted §10.2; it now shows `resolve(ResolveInput): ResolveResult` and `Timeline.approximateCueIds`.
   - This review's four denials move the GOTCHAS §7.4 counter from 44 to 48 (recorded in the same docs delta).
