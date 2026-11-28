@@ -421,9 +421,11 @@ export function createPlayer(timeline: Timeline, clock: Clock): Player;
 Tests use a ManualClock and step frame by frame, asserting state at arbitrary instants:
 
 ```ts
-clock.advanceTo(12_400);
+clock.advance(12_400);
 expect(world.teacher.pointTarget).toBe('earth.patch');
 ```
+
+`ManualClock.advance(deltaMs)` advances by the delta and returns the new time in milliseconds. The example starts at zero, so advancing by 12,400 lands on the 12,400 ms instant.
 
 ## 11  Scene graph and anchors
 
