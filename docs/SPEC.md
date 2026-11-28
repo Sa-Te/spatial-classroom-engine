@@ -22,7 +22,7 @@ The generator is an offline pipeline; the performance is a deterministic player.
 |---|---|---|
 | CON-1 | The AI composes; it does not perform. Model output may not contain timestamps, camera matrices, quaternions, or executable code. | [DERIVED: AGENTS.md §1.2] |
 | CON-2 | A lesson is a versioned artefact (plan → scenes → cue sheets), replayable identically, testable without a browser, and renderable without a network. | [DERIVED: AGENTS.md §1.2] |
-| CON-3 | `resolveTimeline(cueSheet, wordTimings)` is pure: no I/O, no clock, no randomness. The player receives its clock. | [DERIVED: AGENTS.md §1.2; docs/TECHNICAL_DESIGN.md §10] |
+| CON-3 | `resolve(input: ResolveInput)` is pure: no I/O, no clock, no randomness. The player receives its clock. | [DERIVED: AGENTS.md §1.2; docs/TECHNICAL_DESIGN.md §10] |
 | CON-4 | Research produces an immutable `EvidencePacket` before composition; the live tutor answers from that packet. | [DERIVED: AGENTS.md §1.2; docs/TECHNICAL_DESIGN.md §6] |
 | CON-5 | Every displayed claim resolves to stored evidence. An unresolved citation is a hard failure. | [DERIVED: AGENTS.md §1.2] |
 | CON-6 | Model output is never rendered as HTML or executed; only allow-listed primitives with schema-validated parameters are rendered. | [DERIVED: AGENTS.md §1.2; docs/TECHNICAL_DESIGN.md §9] |
@@ -71,7 +71,7 @@ V1 covers the session-to-lesson pipeline, deterministic playback, manipulable de
 
 | ID | Requirement | Provenance |
 |---|---|---|
-| FR-15 | `resolveTimeline(cueSheet, utteranceTimings)` returns a `Timeline` with entries and duration. | [DERIVED: docs/TECHNICAL_DESIGN.md §10.1] |
+| FR-15 | `resolve(input: ResolveInput)` returns a `ResolveResult` carrying a `Timeline` with entries, duration and `approximateCueIds`. | [DERIVED: docs/TECHNICAL_DESIGN.md §10.1] |
 | FR-16 | Every cue is either word-anchored (`utteranceId`, `wordIndex`) or explicitly offset. | [DERIVED: docs/TECHNICAL_DESIGN.md §8.2] |
 | FR-17 | Missing word timings follow a documented fallback and mark the cue `approximate`. | [DERIVED: docs/TECHNICAL_DESIGN.md §10.2, §10.3] |
 | FR-18 | The resolver enforces deixis and ordering rules and rejects violations. | [DERIVED: docs/TECHNICAL_DESIGN.md §10.4; AGENTS.md §1.7.2] |

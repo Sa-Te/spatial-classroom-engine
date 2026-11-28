@@ -29,7 +29,7 @@ These are not preferences. Each has a known failure attached.
 
 2. **The lesson is data.** A lesson is a versioned artefact (plan → scenes → cue sheets). It must be replayable identically, testable without a browser, and renderable without a network.
 
-3. **The timeline resolver is pure.** resolveTimeline(cueSheet, wordTimings) → Timeline performs no I/O, reads no clock, uses no randomness. If it needs a clock, it takes it as an argument.
+3. **The timeline resolver is pure.** resolve(input: ResolveInput) → ResolveResult performs no I/O, reads no clock, uses no randomness. If it needs a clock, it takes it as an argument.
 
 4. **The player is clock-injected.** Production uses performance.now(); tests use a ManualClock. Any code that calls Date.now() or performance.now() directly inside the engine is a defect.
 

@@ -365,7 +365,7 @@ docker compose start postgres
 
 ### 7.4  The reviewer's shell rules silently stopped applying in one session
 
-**SYMPTOM** Every command the reviewer ran returned `Permission denied: shell`, including `pnpm test` and `pnpm typecheck`, which are explicitly allowed. **Counter:** every `Permission denied: shell` that stopped a named command from running during a reviewer invocation, nested or standalone, whether or not a verdict was later issued. The count is **fifty-one** — the forty-eight recorded through the T11 review, plus three on the T11 delta review. The number is a snapshot as of the last docs commit and is not maintained between commits. Standalone processes have executed where nested invocations were denied; the cause is not established, so every review, delta review and retro review is delegated as a standalone process.
+**SYMPTOM** Every command the reviewer ran returned `Permission denied: shell`, including `pnpm test` and `pnpm typecheck`, which are explicitly allowed. **Counter:** every `Permission denied: shell` that stopped a named command from running during a reviewer invocation, nested or standalone, whether or not a verdict was later issued. The count is **sixty-seven** — the fifty-one recorded through the T11 delta review, plus twelve on the T12 review and four on the T12 delta review. The number is a snapshot as of the last docs commit and is not maintained between commits. Standalone processes have executed where nested invocations were denied; the cause is not established, so every review, delta review and retro review is delegated as a standalone process.
 
 **CAUSE** Not established, and three probes ruled out the obvious answers. Run standalone through `opencode run --agent reviewer`, both `git status` and `pnpm typecheck` are allowed. Run as a nested subagent, it has been allowed in some probes; on 2026-11-28 three nested reviewer commands in one parent turn were all denied while a standalone probe and a standalone reviewer both executed. The frontmatter is clean — no tabs, no trailing spaces, no duplicated keys — and `opencode debug agents` reproduces the file's rules in order. The failures cluster on back-to-back reviewer invocations within one parent turn, which is a pattern, not a demonstrated cause.
 
@@ -380,6 +380,14 @@ docker compose start postgres
 **CAUSE** Shell permission rules match command strings, not filesystem effects. A deny on the edit tool does not constrain a shell redirect, and no pattern reliably enumerates every way a shell can write a file.
 
 **FIX** None by permission pattern. The guard stops the edit tool, which is how the config was previously changed; it is not complete. The diff and the pull request are the control, and agent-config changes are made by the human or with the human watching. Do not describe the guard as complete.
+
+### 7.6  AGENTS.md is edit-denied to agents
+
+**SYMPTOM** An agent asked to correct `AGENTS.md` cannot use the edit tool; the file is denied by `opencode.json`.
+
+**CAUSE** The constitution is human-owned by design, and `AGENTS.md` is edit-denied to every agent. The shell can still write it, so the deny is a guardrail, not enforcement.
+
+**FIX** Any agent-applied change to `AGENTS.md` must be human-authorised and disclosed in the pull-request body with the before and after. This has now happened twice.
 
 ## 8  Process
 
