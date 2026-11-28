@@ -4,7 +4,7 @@
 
 **Companion documents:** [AGENTS.md](../AGENTS.md) — rules and invariants, [SETUP_AND_VERIFY.md](SETUP_AND_VERIFY.md) — machine setup and verification, [GOTCHAS.md](GOTCHAS.md) — known traps
 
-Three agents, disk-based coordination, on-demand skills. The goal is **token efficiency and review discipline**, not theatre: agents that talk to each other in chat burn context; agents that coordinate through two files on disk stay cheap and resumable.
+Four agents, disk-based coordination, on-demand skills. The goal is **token efficiency and review discipline**, not theatre: agents that talk to each other in chat burn context; agents that coordinate through two files on disk stay cheap and resumable.
 
 > **⚠ Verify before trusting the config**
 >
@@ -19,7 +19,8 @@ Three agents, disk-based coordination, on-demand skills. The goal is **token eff
 │   ├── agents/
 │   │   ├── architect.md           primary — plans, delegates, updates docs/TASKS.md
 │   │   ├── coder.md               subagent — executes one task, tests, verifies
-│   │   └── reviewer.md            subagent — audits a diff, returns PASS, FAIL, or PARTIAL VERIFICATION
+│   │   ├── reviewer.md            subagent — audits a diff, returns PASS, FAIL, or PARTIAL VERIFICATION
+│   │   └── judge.md               subagent — adversarial judge of a reviewed diff, invoked manually
 │   └── skills/                    project skills (installed in §6)
 ├── docs/TASKS.md                       the shared brain (agent-writable)
 └── AGENTS.md                      the constitution (human-owned)
@@ -84,9 +85,9 @@ Why each entry exists:
 
 - The ask rules are the three commands that can destroy work or publish prematurely.
 
-## 5  The three agents
+## 5  The four agents
 
-The three blocks below are copies; the files under `.opencode/agents/` are the source of truth, and this section must be regenerated — not hand-edited — whenever they change.
+The four blocks below are copies; the files under `.opencode/agents/` are the source of truth, and this section must be regenerated — not hand-edited — whenever they change.
 
 ### 5.1  .opencode/agents/architect.md
 
@@ -143,10 +144,12 @@ Use `graphify` for code discovery: `graphify update .` after structural changes;
    reference, "done when", explicit out-of-scope list, and the test that must
    exist at the end.
 3. Delegate to `@coder` with ONLY those file paths. Never hand over the repo.
-4. When the coder returns, hand the diff to `@reviewer`.
+4. When the coder returns, delegate the review as its own standalone process:
+   `opencode run --agent reviewer ...`. Never a nested subagent call chained onto
+   a turn that has already returned.
 5. If any commit landed after the reviewer's verdict — including the coder
    applying the reviewer's own suggestions — delegate a delta review of that
-   commit to the reviewer before the task is reported complete. A task is not
+   commit as its own standalone process before the task is reported complete. A task is not
    reported as reviewed until the delta review has happened. If it is refused
    or skipped, the task is not complete: report it to the human as
    unreviewed.
@@ -160,6 +163,12 @@ Use `graphify` for code discovery: `graphify update .` after structural changes;
 invocation. If the second attempt also lacks shell access, stop and report to the
 human — a read-only opinion is not verification, and accepting it is how a task
 ships with one execution instead of two.
+
+Delegate each review, delta review and retro review as its own standalone process
+(`opencode run --agent reviewer ...`), never as a nested subagent call chained onto a
+turn that has already returned. Evidence: fifteen denials, all on nested calls;
+standalone execution succeeded on the same configuration (`docs/GOTCHAS.md` §7.4).
+The delegation must not carry shell restrictions.
 
 ## Hard limits
 - One task in flight.
@@ -190,6 +199,12 @@ permissions:
   - action: edit
     resource: "*"
     effect: allow
+  - action: edit
+    resource: ".opencode/**"
+    effect: deny
+  - action: edit
+    resource: "opencode.json"
+    effect: deny
   - action: edit
     resource: "AGENTS.md"
     effect: deny
@@ -225,6 +240,9 @@ permissions:
     effect: ask
   - action: shell
     resource: "git push --force*"
+    effect: deny
+  - action: shell
+    resource: "git push -f*"
     effect: deny
   - action: shell
     resource: "docker compose down -v*"
@@ -290,11 +308,13 @@ pnpm verify
 - Nothing else. Do not summarise the architecture back.
 ````
 
-### 5.3  .opencode/agents/reviewer.md
+**Guard limits:** the coder's `edit ".opencode/**"` deny covers the edit tool only. A shell redirect or `sed -i` can still rewrite these files. This is not enforceable by permission patterns; the diff and the pull request are the control.
 
+### 5.3  .opencode/agents/reviewer.md
 The reviewer is an OpenCode agent, not a GitHub account. `gh pr edit --add-reviewer` cannot
 use it: `@reviewer` is not a resolvable login. Agent review is a local process, and on a solo
 repository the GitHub review slot stays empty. Do not attempt to attach it.
+
 
 ```markdown
 ---
@@ -330,6 +350,9 @@ permissions:
     effect: allow
   - action: shell
     resource: "pnpm format:check*"
+    effect: allow
+  - action: shell
+    resource: "pnpm verify*"
     effect: allow
 ---
 
@@ -377,6 +400,51 @@ If PASS, list at most three non-blocking observations.
 Never restate the diff. Never praise. Never suggest a rewrite of working code.
 ```
 
+### 5.4  .opencode/agents/judge.md
+
+```markdown
+---
+description: Adversarial judge of a diff that already passed review; manually invoked, diff-scoped, PASS or FAIL with evidence
+mode: subagent
+model: openrouter/deepseek/deepseek-v4-pro
+steps: 8
+color: "#bb9af7"
+request:
+  body:
+    temperature: 0.1
+permissions:
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: write
+    resource: "*"
+    effect: deny
+---
+
+You are the judge. You are invoked manually only. You are never part of the automatic architect → coder → reviewer loop.
+
+## Input
+
+You receive the diff, the task statement, and the relevant constraint sections. Do not read the whole repository. If a claim needs a file, read only the file named in the diff or the task.
+
+## Job
+
+Give an adversarial verdict on a diff that already passed review.
+
+- Check the diff against the task and the invariants.
+- Look for what the reviewer missed: unstated behaviour change, missing negative test, contract drift, unsafe permissions, unverifiable "done".
+- Every finding carries evidence: file, line, and the reason.
+- Do not restate the diff. Do not praise.
+
+## Output — exactly this shape
+
+VERDICT: PASS | FAIL
+
+FINDINGS
+- [severity] file:line — what is wrong, and the minimal fix.
+
+If PASS, list at most three non-blocking observations.
+```
 ## 6  Skills
 
 Skills are loaded on demand and cost nothing until used. Install the ones that match this project; skip the rest.
@@ -513,7 +581,7 @@ node -e "JSON.parse(require('fs').readFileSync('opencode.json','utf8')); console
 ls .opencode/agents
 ```
 
-**Pass:** version prints, JSON parses, three agent files exist.
+**Pass:** version prints, JSON parses, four agent files exist.
 
 ### 8.2  Agents are visible
 
@@ -523,7 +591,7 @@ Start OpenCode and ask:
 List the agents available to you, with their mode and model.
 ```
 
-**Pass:** architect (primary), coder (subagent), reviewer (subagent), plus the built-ins. If an agent is missing, the frontmatter is malformed or the file is not named .md in .opencode/agents/.
+**Pass:** architect (primary), coder (subagent), reviewer (subagent), judge (subagent), plus the built-ins. If an agent is missing, the frontmatter is malformed or the file is not named .md in .opencode/agents/.
 
 ### 8.3  Model resolves
 
