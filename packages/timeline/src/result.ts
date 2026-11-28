@@ -5,9 +5,11 @@ import type { Timeline } from './timeline.js';
  * packages/timeline rather than packages/contracts because they describe this
  * resolver's behaviour, not a stored shape (T10).
  *
- * `TIMINGS_MISSING` is deliberately temporary: T11 replaces that rejection with
- * approximate resolution, so a later test that expects a timeline instead is not
- * a regression (TECHNICAL_DESIGN §10.3).
+ * `TIMINGS_MISSING` is now narrow (T11): it covers a word-anchored cue whose
+ * utterance has neither word timings nor a measured duration, and the case where
+ * the script text has no words to count. A measured duration resolves
+ * approximately instead, and that path is marked on the entry (TECHNICAL_DESIGN
+ * §10.3).
  */
 export type ProblemCode =
   'WORD_INDEX_OUT_OF_RANGE' | 'TIMINGS_MISSING' | 'TIMINGS_OUT_OF_ORDER' | 'TIMINGS_OVERLAP';

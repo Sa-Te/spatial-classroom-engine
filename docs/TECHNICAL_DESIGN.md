@@ -377,22 +377,42 @@ Pure. No clock, no I/O, no randomness.
 
 ### 10.2  Algorithm
 
+The speech arrives as one table keyed by utterance id, each entry that utterance's own measurement — the `resolve` input. There is no second, parallel map of word timings: two records describing one utterance only ever diverge.
+
+```ts
+interface UtteranceMeasurement {
+  startMs: number; // where this utterance begins, on the lesson's single axis
+  durationMs: number; // measured length; 0 when nothing was measured
+  wordTimings: WordTiming[] | null; // utterance-relative (§8.2); null or [] means not measured
+}
+
+interface ResolveInput {
+  cueSheet: CueSheet;
+  utterances: Record<string, UtteranceMeasurement>;
+}
+```
+
 ```text
-for each utterance: compute startMs and wordOffsets[]
 for each cue:
   if word-anchored:
-     timings = utteranceTimings[utteranceId]
-     if timings is null  → apply the documented fallback, mark the cue `approximate`
-     else                → atMs = timings[wordIndex].startMs
+     measurement = utterances[utteranceId]
+     if measurement is absent      → TIMINGS_MISSING
+     if wordTimings is non-empty   → atMs = measurement.startMs + wordTimings[wordIndex].startMs
+                                     approximate: false
+     if wordTimings is null or []  → atMs = the fallback formula (§10.3), approximate: true
   else → atMs = offsetMs
-sort entries by atMs, then by track precedence
-reject or flag entries violating ordering rules (§9.4)
+sort entries by atMs
+reject or flag entries violating the ordering rules (§10.4)
 durationMs = max(entry.atMs + entry.durationMs, last utterance end)
 ```
 
-`TimelineEntry` and `Timeline` are adopted by instruction at T9 and completed at T10, not derived from this section. `Timeline` is exactly §10.1's `{ entries, durationMs }`; `TimelineEntry` is `{ cueId, atMs, primitive: PrimitiveId, track: "camera" | "teacher" | "scene" | "light" | "learner", durationMs, approximate }`. `durationMs` is an integer ≥ 0 read from the one parameter that carries a length — `scene.animateParam` → `params.durationMs`, `learner.holdSilence` → `params.ms` — and `0` for every instantaneous primitive. Entries come from the T9 sorter, one sorter only: stable, ascending `atMs`, no track tie-break. Tie-break precedence between different tracks at the same `atMs` is not part of the sorter; T12's ordering rules reject illegal sequences, and no track order is invented here. `timeline.durationMs` is the later of the latest `atMs + durationMs` and the final word's `endMs` of the last utterance (or `0` when that utterance has no timings), so a declared pause is part of the lesson's length rather than something the speech has to imply.
+`WordTiming.startMs` is utterance-relative, so the exact path is `utterance.startMs + word.startMs`. T10's numbers (300, 1,400, 3,000) are unchanged because those utterances start at 0; the addition is proved by a test whose utterance starts at 10,000.
 
-Adopted at T10: the resolver returns a discriminated `ResolveResult` rather than a bare `Timeline` — `{ ok: true; timeline: Timeline }` or `{ ok: false; problems: ReadonlyArray<{ cueId: string; code: ProblemCode; detail: string }> }`. It never throws on authored data and never returns `undefined`; a sheet that cannot be played is a typed rejection carrying every problem found. `ProblemCode` is closed at four and lives in `packages/timeline`, because these name this resolver's behaviour and not a stored shape: `WORD_INDEX_OUT_OF_RANGE` (`wordIndex` below `0`, or at/beyond the timing array's length), `TIMINGS_MISSING` (the addressed utterance has no timings — key absent or `null`), `TIMINGS_OUT_OF_ORDER` (a `startMs` that is not strictly greater than its predecessor's), `TIMINGS_OVERLAP` (a word's `endMs` beyond the next word's `startMs`). Only the timing arrays a cue actually references are validated, so an unused bad array is not that sheet's problem. T10 marks every entry `approximate: false`; the fallback path that may set `true` is T11's.
+`TimelineEntry` and `Timeline` are adopted by instruction at T9 and completed at T10, not derived from this section. `Timeline` is `{ entries, durationMs, approximateCueIds }`: entries ordered by ascending `atMs`; `durationMs`, the lesson's length; and `approximateCueIds`, the cue ids whose `atMs` came from the fallback, in sorted-entry order, `[]` when every cue landed on a measured word. That list is what T13's drift report reads, so an approximate cue is reported as a known debt apart from an unmarked late cue, which is a bug. `TimelineEntry` is `{ cueId, atMs, primitive: PrimitiveId, track: "camera" | "teacher" | "scene" | "light" | "learner", durationMs, approximate }`. `durationMs` is an integer ≥ 0 read from the one parameter that carries a length — `scene.animateParam` → `params.durationMs`, `learner.holdSilence` → `params.ms` — and `0` for every instantaneous primitive. Entries come from the T9 sorter, one sorter only: stable, ascending `atMs`, no track tie-break. Tie-break precedence between different tracks at the same `atMs` is not part of the sorter; T12's ordering rules reject illegal sequences, and no track order is invented here. `timeline.durationMs` is the later of the latest `atMs + durationMs` and the end of the last utterance — `startMs + the last word's endMs` when that utterance has word timings, `startMs + durationMs` when only a duration was measured, `0` when neither — so a declared pause is part of the lesson's length rather than something the speech has to imply, and a lesson built entirely from the fallback is as long as the speech it was built from.
+
+Adopted at T10: the resolver returns a discriminated `ResolveResult` rather than a bare `Timeline` — `{ ok: true; timeline: Timeline }` or `{ ok: false; problems: ReadonlyArray<{ cueId: string; code: ProblemCode; detail: string }> }`. It never throws on authored data and never returns `undefined`; a sheet that cannot be played is a typed rejection carrying every problem found. `ProblemCode` is closed at four and lives in `packages/timeline`, because these name this resolver's behaviour and not a stored shape: `WORD_INDEX_OUT_OF_RANGE` (`wordIndex` below `0`, at/beyond the timing array's length, or on the fallback path beyond the script text's word count), `TIMINGS_MISSING` (the addressed utterance is absent, or has neither word timings nor a measured duration, or has no words to count), `TIMINGS_OUT_OF_ORDER` (a `startMs` that is not strictly greater than its predecessor's), `TIMINGS_OVERLAP` (a word's `endMs` beyond the next word's `startMs`). Only the timing arrays a cue actually references are validated, so an unused bad array is not that sheet's problem.
+
+The spectre of an unmarked approximate cue is closed at the type level (T11): two constructors, not one constructor with a flag. `exactEntry` returns `TimelineEntry & { approximate: false }` and `approximateEntry` returns `TimelineEntry & { approximate: true }`, so the fallback path cannot produce an entry that a consumer would read as measured, and no boolean argument chooses the path. A test proves the typing with `expectTypeOf`, not only the runtime value.
 
 `TimelineEntry.track` is the primitive's registry track, not the cue's declared `track`: the cue sheet also admits `board` and `audio`, which the entry does not, and the registry lookup is total over the closed nine. Whether a cue's declared track must agree with its primitive's is a scene-aware T12/T15 rule; T10 does not invent a problem code for it.
 
@@ -407,7 +427,13 @@ worstCaseDrift = max over all cues
 
 A named budget (to be fixed at the first golden test) is enforced in CI. Exceeding it fails the build. **Drift is a first-class metric, not a warning.** Cues resolved via the fallback path are marked approximate and reported separately — an approximate cue is a known debt, an unmarked late cue is a bug.
 
-`TIMINGS_MISSING` is a deliberate **temporary** rejection. T10 refuses a word-anchored cue whose utterance has no timings because there is no fallback yet. T11 replaces that refusal with the approximate path above: the cue resolves, carries `approximate: true`, and is reported by this metric separately. A T11 test that expects a timeline where T10 expects a `TIMINGS_MISSING` problem is therefore the intended contract change, not a regression.
+The fallback formula is **adopted by instruction** at T11, because this design states no formula of its own:
+
+```text
+atMs = utterance.startMs + round((wordIndex / wordCount) * utterance.durationMs)
+```
+
+`wordCount` is the number of words in that utterance's `text`, split on whitespace — with `wordTimings: null` there is no other word count to use, and refusing to count the script would leave a measured utterance unplayable. `null` and an empty array both mean "no word timings"; a present, non-empty array is never routed to this formula, so `TIMINGS_OUT_OF_ORDER` and `TIMINGS_OVERLAP` still apply to it unchanged — a defect in measured timings is a reason to refuse, not a reason to fall back. `TIMINGS_MISSING` is returned only when the utterance has no word timings *and* no measured `durationMs`, or when its text has no words to count, and the cue id is named; `WORD_INDEX_OUT_OF_RANGE` covers an index past the script text's words on this path, as it does on the exact path. No path places a cue at `0` as a default: a zero-time entry looks like a measurement, which is the failure this rule exists to prevent. The entry the formula produces is constructed by `approximateEntry`, typed `approximate: true`, and listed in `Timeline.approximateCueIds` (§10.2) — the list this metric reads to report an approximate cue as a known debt rather than as drift.
 
 ### 10.4  Ordering rules, enforced by the resolver
 

@@ -19,14 +19,25 @@ export interface TimelineEntry {
    * and 0 for an instantaneous cue.
    */
   durationMs: number;
-  /** True when the cue was placed by the fallback path, not by a word timing. */
+  /**
+   * True when the cue was placed by the fallback path rather than by a word
+   * timing. The resolver builds such an entry through a constructor typed
+   * `approximate: true`, so an approximate cue cannot be produced unmarked (T11).
+   */
   approximate: boolean;
 }
 
-/** The resolved lesson: ordered entries and the whole thing's length (TECHNICAL_DESIGN §10.1). */
+/** The resolved lesson: ordered entries, the whole thing's length, and the approximate cues. */
 export interface Timeline {
   readonly entries: readonly TimelineEntry[];
   readonly durationMs: number;
+  /**
+   * The cue ids whose `atMs` came from the fallback, in sorted-entry order; `[]`
+   * when every cue landed on a measured word. A known debt, kept separate from
+   * the entries so T13's drift report can report those cues apart from a late
+   * exact cue (TECHNICAL_DESIGN §10.2, §10.3).
+   */
+  readonly approximateCueIds: readonly string[];
 }
 
 /**
