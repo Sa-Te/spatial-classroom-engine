@@ -192,6 +192,7 @@ export interface LessonPlan {
   schemaVersion: 1;
   id: string;
   evidencePacketId: string;
+  topic: TopicRef;                   // §6's TopicRef; the lesson states its own topic
   audience: AudienceProfile;
   title: string;
   objective: string;                 // one sentence the learner should be able to say afterwards
@@ -276,16 +277,19 @@ export interface UtteranceScript {
   style?: { pace: "slow" | "normal"; emphasis?: string[] };
 }
 
-export interface Cue {
+export interface CueBase {
   id: string;
   track: "camera" | "teacher" | "scene" | "board" | "light" | "learner" | "audio";
-  primitive: PrimitiveId;
-  params: Record<string, unknown>;   // validated against the primitive's schema
   at:
     | { utteranceId: string; wordIndex: number }   // word-anchored — preferred
     | { offsetMs: number };                        // explicit — allowed
   motivation?: string;               // required for camera primitives
 }
+
+// One branch per registry entry, keyed on the primitive id (ADR 0016).
+// PrimitiveParams[Id] is z.infer of that entry's schema; no free-form record exists.
+export type Cue = CueBase &
+  { [Id in PrimitiveId]: { primitive: Id; params: PrimitiveParams<Id> } }[PrimitiveId];
 
 export interface WordTiming {
   word: string;
@@ -296,7 +300,7 @@ export interface WordTiming {
 
 **The LLM never produces `at.offsetMs` unless the cue is genuinely independent of speech** (a hold, a world event, a pre-roll). Word-anchored is the default and the reviewed form.
 
-In P1 the schema types `primitive` as a string; Q1 narrows it to the closed nine-id union at T6, and ADR 0016 replaces `params` with a discriminated union keyed on it.
+`primitive` is the closed nine-id set and `params` is keyed on it, so an unknown id and a parameter shape that does not match its primitive both fail at parse with the primitive named (T6B, ADR 0016).
 
 ### 8.3  A real fragment
 
@@ -312,7 +316,7 @@ In P1 the schema types `primitive` as a string; Q1 narrows it to the closed nine
       "params": { "hand": "right", "target": "earth.patch" },
       "at": { "utteranceId": "u4", "wordIndex": 2 } },
     { "id": "c4.2", "track": "camera", "primitive": "camera.lockOff",
-      "params": { "framing": "wideSideProfile", "sunSide": "left" },
+      "params": { "framing": "wideSideProfile" },
       "at": { "utteranceId": "u4", "wordIndex": 0 },
       "motivation": "hold the frame so the two patches can be compared" }
   ]

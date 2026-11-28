@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TopicRefSchema } from './evidence.js';
 
 // The lesson plan (docs/TECHNICAL_DESIGN.md §7): what the planner emits before a
 // scene or a cue exists. Schema only — idea quality and scope are validator work.
@@ -39,6 +40,9 @@ export const LessonPlanSchema = z
     schemaVersion: z.literal(1),
     id: z.string(),
     evidencePacketId: z.string(),
+    // §6 defines TopicRef. The lesson states its own topic rather than being
+    // reachable only through the packet's.
+    topic: TopicRefSchema,
     audience: AudienceProfileSchema,
     title: z.string(),
     // One sentence the learner should be able to say afterwards.

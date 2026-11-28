@@ -35,6 +35,7 @@ export {
   primitiveRegistry,
   type PrimitiveEntry,
   type PrimitiveLookup,
+  type PrimitiveParams,
   type PrimitiveTrack,
 } from './registry.js';
 
@@ -42,8 +43,8 @@ export {
 // rather than present and unvalidated — adding one means shipping its schema and
 // validator in the same change.
 //
-// registry.ts maps each id to its schema and track (T7). The Cue.params
-// discriminated union that consumes it arrives at T6B.
+// registry.ts maps each id to its schema and track (T7); Cue.params consumes
+// that registry in cue-sheet.ts (ADR 0016).
 export const PrimitiveIdSchema = z.enum([
   'camera.lockOff',
   'camera.cut',

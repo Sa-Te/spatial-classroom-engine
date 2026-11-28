@@ -1,6 +1,7 @@
 import type { ZodType } from 'zod';
 import { describe, expect, it } from 'vitest';
-import { CueSchema, CueSheetSchema, WordTimingSchema } from './cue-sheet.js';
+import { CueSchema, CueSheetSchema, WordTimingSchema, type Cue } from './cue-sheet.js';
+import { PrimitiveIdSchema, primitiveRegistry, type PrimitiveId } from './primitives/index.js';
 
 type IssueLike = {
   path: PropertyKey[];
@@ -62,7 +63,7 @@ const realFragment = {
       id: 'c4.2',
       track: 'camera',
       primitive: 'camera.lockOff',
-      params: { framing: 'wideSideProfile', sunSide: 'left' },
+      params: { framing: 'wideSideProfile' },
       at: { utteranceId: 'u4', wordIndex: 0 },
       motivation: 'hold the frame so the two patches can be compared',
     },
@@ -81,9 +82,24 @@ const cameraCue = {
   id: 'c5.2',
   track: 'camera',
   primitive: 'camera.lockOff',
-  params: { framing: 'wideSideProfile', sunSide: 'left' },
+  params: { framing: 'wideSideProfile' },
   at: { utteranceId: 'u4', wordIndex: 0 },
   motivation: 'hold the frame so the two patches can be compared',
+};
+
+// One valid payload per closed primitive id (Q4/Q5/Q10/Q11). Keyed by the id it
+// belongs to, so a missing or mis-paired branch fails the loop below rather than
+// passing on some other primitive's schema.
+const validParams: Record<PrimitiveId, Record<string, unknown>> = {
+  'camera.lockOff': { framing: 'wideSideProfile' },
+  'camera.cut': { framing: 'mediumFront' },
+  'teacher.lookAt': { target: 'earth.patch' },
+  'teacher.point': { hand: 'right', target: 'earth.patch' },
+  'scene.setParam': { parameter: 'axisTiltDeg', value: 23.4 },
+  'scene.animateParam': { parameter: 'orbitSpeed', from: 0, to: 1, durationMs: 2000 },
+  'light.keyFromSun': { sunElevationDeg: 60 },
+  'learner.holdSilence': { ms: 2000 },
+  'learner.enableGrab': { objectId: 'earth', parameter: 'axisTiltDeg' },
 };
 
 const wordTiming = { word: 'sunlight', startMs: 0, endMs: 420 };
@@ -232,18 +248,36 @@ describe('CueSchema shape', () => {
     expect(unrecognizedKeys(CueSchema, cue)).toContain('priority');
   });
 
-  it('accepts arbitrary nested params, because primitive schemas validate them later', () => {
+  it('rejects params that do not match the primitive, naming the primitive', () => {
     const cue = {
       ...teacherCue,
-      params: { nested: { deep: [1, 'two', null, { three: true }] }, flag: false },
+      params: { hand: 'right', target: 'earth.patch', sunSide: 'left' },
     };
 
-    const parsed = CueSchema.parse(cue);
+    expect(CueSchema.safeParse(cue).success).toBe(false);
 
-    expect(parsed.params).toEqual({
-      nested: { deep: [1, 'two', null, { three: true }] },
-      flag: false,
-    });
+    const paramIssues = issuesAt(CueSchema, cue, 'params');
+    expect(paramIssues).toHaveLength(1);
+    expect(paramIssues[0]?.message).toContain('teacher.point');
+  });
+
+  it('rejects camera.lockOff carrying sunSide, because Q5 derives the sun side from the key light', () => {
+    const cue = { ...cameraCue, params: { framing: 'wideSideProfile', sunSide: 'left' } };
+
+    expect(CueSchema.safeParse(cue).success).toBe(false);
+    expect(issuePaths(CueSchema, cue)).toContain('params');
+
+    const paramIssues = issuesAt(CueSchema, cue, 'params');
+    expect(paramIssues.some((issue) => issue.message.includes('camera.lockOff'))).toBe(true);
+  });
+
+  it('rejects an unknown primitive id, naming the id that is not in the closed set', () => {
+    const cue = { ...teacherCue, primitive: 'camera.dolly' };
+
+    expect(CueSchema.safeParse(cue).success).toBe(false);
+
+    const primitiveIssues = issuesAt(CueSchema, cue, 'primitive');
+    expect(primitiveIssues.some((issue) => issue.message.includes('camera.dolly'))).toBe(true);
   });
 
   it('rejects an empty primitive id', () => {
@@ -251,6 +285,48 @@ describe('CueSchema shape', () => {
 
     expect(CueSchema.safeParse(cue).success).toBe(false);
     expect(issuePaths(CueSchema, cue)).toContain('primitive');
+  });
+});
+
+describe('CueSchema params union', () => {
+  it('narrows params by primitive in the type checker, not only at runtime', () => {
+    const describeFraming = (cue: Cue): string =>
+      cue.primitive === 'camera.lockOff' ? cue.params.framing : 'not a lock-off';
+
+    const lockOff: Cue = {
+      id: 'c-lock',
+      track: 'camera',
+      primitive: 'camera.lockOff',
+      params: { framing: 'wideSideProfile' },
+      at: { offsetMs: 0 },
+      motivation: 'hold the frame',
+    };
+
+    expect(describeFraming(lockOff)).toBe('wideSideProfile');
+
+    // @ts-expect-error camera.lockOff params are CameraLockOff, not teacher.point's shape
+    const mismatched: Cue = { ...lockOff, params: { hand: 'right', target: 'earth.patch' } };
+
+    expect(mismatched.primitive).toBe('camera.lockOff');
+  });
+
+  it('parses one cue per closed primitive id, so every registry entry has a branch', () => {
+    for (const id of PrimitiveIdSchema.options) {
+      const cue = {
+        id: `c-${id}`,
+        track: primitiveRegistry[id].track,
+        primitive: id,
+        params: validParams[id],
+        at: { utteranceId: 'u4', wordIndex: 0 },
+        ...(primitiveRegistry[id].track === 'camera'
+          ? { motivation: 'prove the branch exists' }
+          : {}),
+      };
+
+      const parsed = CueSchema.parse(cue);
+
+      expect(parsed.primitive).toBe(id);
+    }
   });
 });
 

@@ -20,6 +20,7 @@ const lessonPlanExample = {
   schemaVersion: 1,
   id: 'lsn_01j9z5c7n3',
   evidencePacketId: 'pkt_01j9z4k2m8',
+  topic: { id: 't_01j9z3r8q1', rawText: 'Why is January cold in the northern hemisphere?' },
   audience: {
     ageBand: '16+',
     readingLevel: 'intermediate',
@@ -81,6 +82,20 @@ describe('LessonPlanSchema', () => {
 
     expect(LessonPlanSchema.safeParse(plan).success).toBe(false);
     expect(issuePaths(LessonPlanSchema, plan)).toContain('arc.resolution');
+  });
+
+  it('rejects a topic with no rawText, because the learner words are what the lesson echoes', () => {
+    const plan = { ...lessonPlanExample, topic: { id: 't_01j9z3r8q1' } };
+
+    expect(LessonPlanSchema.safeParse(plan).success).toBe(false);
+    expect(issuePaths(LessonPlanSchema, plan)).toContain('topic.rawText');
+  });
+
+  it('rejects a plan with no topic at all, because a lesson must state what it covers', () => {
+    const { topic: _topic, ...planWithoutTopic } = lessonPlanExample;
+
+    expect(LessonPlanSchema.safeParse(planWithoutTopic).success).toBe(false);
+    expect(issuePaths(LessonPlanSchema, planWithoutTopic)).toContain('topic');
   });
 });
 

@@ -13,18 +13,18 @@ export const PrimitiveTrackSchema = z.enum(['camera', 'teacher', 'scene', 'light
 
 export type PrimitiveTrack = z.infer<typeof PrimitiveTrackSchema>;
 
-export interface PrimitiveEntry {
-  readonly schema: ZodType;
+export interface PrimitiveEntry<T extends ZodType = ZodType> {
+  readonly schema: T;
   readonly track: PrimitiveTrack;
 }
 
-// A total Record, not Partial: a PrimitiveId without an entry is a compile error, so
-// the registry cannot fall behind the closed set (Q1/Q2) and no fallback entry exists
-// to swallow an unknown id.
+// A total object, checked by `satisfies`: a PrimitiveId without an entry is a
+// compile error, and each entry keeps its literal schema type so the cue union
+// can derive that branch's params type instead of erasing it to ZodType.
 //
 // Imported from the sibling files rather than from ./index.js: index re-exports this
 // module, and a runtime cycle would read the schemas before they are initialised.
-export const primitiveRegistry: Readonly<Record<PrimitiveId, PrimitiveEntry>> = {
+export const primitiveRegistry = {
   'camera.lockOff': { schema: CameraLockOffSchema, track: 'camera' },
   'camera.cut': { schema: CameraCutSchema, track: 'camera' },
   'teacher.lookAt': { schema: TeacherLookAtSchema, track: 'teacher' },
@@ -34,7 +34,12 @@ export const primitiveRegistry: Readonly<Record<PrimitiveId, PrimitiveEntry>> = 
   'light.keyFromSun': { schema: LightKeyFromSunSchema, track: 'light' },
   'learner.holdSilence': { schema: LearnerHoldSilenceSchema, track: 'learner' },
   'learner.enableGrab': { schema: LearnerEnableGrabSchema, track: 'learner' },
-};
+} as const satisfies Record<PrimitiveId, PrimitiveEntry>;
+
+// The parameters belonging to one primitive id, read from that registry entry.
+export type PrimitiveParams<Id extends PrimitiveId> = z.infer<
+  (typeof primitiveRegistry)[Id]['schema']
+>;
 
 // A miss carries the id back: the caller has to embarrass an unknown primitive in a
 // validation message, and "unknown primitive" without the name is unactionable.
