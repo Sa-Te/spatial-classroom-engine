@@ -363,9 +363,9 @@ docker compose start postgres
 
 **FIX** graphify update . after any structural change. Treat graph edges as a map, never as evidence — read the file before claiming behaviour.
 
-### 7.4  The reviewer's shell rules silently stopped applying in one session
+### 7.4  The reviewer's shell rules silently stopped applying in one session
 
-**SYMPTOM** Every command the reviewer ran returned `Permission denied: shell`, including `pnpm test` and `pnpm typecheck`, which are explicitly allowed. Fifteen denials across five tasks (eleven before 2026-11-28; four that day, all on nested reviewer calls). Standalone processes have executed on the same configuration where nested invocations were denied. The cause is not established, so every review, delta review and retro review is delegated as a standalone process.
+**SYMPTOM** Every command the reviewer ran returned `Permission denied: shell`, including `pnpm test` and `pnpm typecheck`, which are explicitly allowed. **Counter:** one denial per `Permission denied: shell` that stopped a reviewer command in a review, delta review or retro review, nested or standalone; a process that still issued a verdict counts the commands it could not run. The count is **forty-one** — the fifteen previously recorded, plus three on the T4 retro, ten on the T6 retro, five on the T9 review, and four on each of T9's two delta reviews. Standalone processes have executed where nested invocations were denied; the cause is not established, so every review, delta review and retro review is delegated as a standalone process.
 
 **CAUSE** Not established, and three probes ruled out the obvious answers. Run standalone through `opencode run --agent reviewer`, both `git status` and `pnpm typecheck` are allowed. Run as a nested subagent, it has been allowed in some probes; on 2026-11-28 three nested reviewer commands in one parent turn were all denied while a standalone probe and a standalone reviewer both executed. The frontmatter is clean — no tabs, no trailing spaces, no duplicated keys — and `opencode debug agents` reproduces the file's rules in order. The failures cluster on back-to-back reviewer invocations within one parent turn, which is a pattern, not a demonstrated cause.
 

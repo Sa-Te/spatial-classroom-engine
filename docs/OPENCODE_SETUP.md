@@ -89,7 +89,7 @@ Why each entry exists:
 
 The four blocks below are copies; the files under `.opencode/agents/` are the source of truth, and this section must be regenerated — not hand-edited — whenever they change.
 
-### 5.1  .opencode/agents/architect.md
+### 5.1  .opencode/agents/architect.md
 
 ```markdown
 ---

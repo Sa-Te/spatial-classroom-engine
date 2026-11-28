@@ -19,6 +19,7 @@ Phase definition of done: `docs/ROADMAP.md` P1 — `pnpm verify`, the named test
 - `main` carries one moderate Dependabot advisory, unrelated to P1 code. The fix is Dependabot's own pull request: do not hand-edit a version bump inside a contracts change, and do not touch the lockfile for it.
 - No verifier agent. The reviewer's shell fault is intermittent, not deterministic, so a second agent would fail intermittently too and add a moving part without removing the unknown. Revisit only if the fault becomes reproducible.
 - T4 and T6 shipped on static reviews with no delta. Both are recorded as unreviewed, not as passes, in their Done entries. A future session can retro-fit both by making one reviewer invocation that actually executes cover `a7be114^1..a7be114` and `b1c01a8^1..b1c01a8` together.
+- T12: its stability fixture must use a track order that conflicts with any precedence it considers, because the current `camera, teacher, scene` order coincides with the track union's declaration order and would pass under a precedence-based tie-break.
 
 ## Done
 
