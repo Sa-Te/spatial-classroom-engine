@@ -275,6 +275,39 @@ describe('checkOrdering — POINT_AFTER_WORD', () => {
     expect(expectOkTimeline(checkOrdering(input, timeline))).toBe(timeline);
   });
 
+  it('does not borrow the naming word from another utterance', () => {
+    // u1 says 'earth' at 300; the point is anchored to u2, whose words never name
+    // the target, and lands at 1,800. Only the point's own utterance can make it
+    // late — scanning the sheet's other utterances would reject a valid point.
+    const input = inputFor(
+      [
+        lookAtCue('c-look', { offsetMs: 0 }, 'earth'),
+        pointCue('c-point', { utteranceId: 'u2', wordIndex: 4 }, 'earth'),
+      ],
+      {
+        ...defaultSpeech,
+        u2: {
+          startMs: 0,
+          durationMs: 2_200,
+          wordTimings: [
+            timing('the', 0, 300),
+            timing('shadow', 300, 800),
+            timing('falls', 800, 1_400),
+            timing('over', 1_400, 1_800),
+            timing('there', 1_800, 2_200),
+          ],
+        },
+      },
+      { ...defaultTexts, u2: 'the shadow falls over there' },
+    );
+
+    const timeline = timelineFor(input);
+    // The fixture only proves anything if the point really does land after u1's
+    // naming word.
+    expect(timeline.entries.find((entry) => entry.cueId === 'c-point')?.atMs).toBe(1_800);
+    expect(expectOkTimeline(checkOrdering(input, timeline))).toBe(timeline);
+  });
+
   it('passes vacuously when the point’s own utterance has no word timings', () => {
     // The fallback places this cue approximately; the offset utterance start is
     // the only thing known about its words, so nothing can be late.
