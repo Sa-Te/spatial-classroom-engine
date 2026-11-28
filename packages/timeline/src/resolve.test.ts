@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import type { Cue, CueSheet, WordTiming } from '@sce/contracts';
-import { resolve } from './resolve.js';
+import type { UtteranceMeasurement } from './fallback.js';
+import { approximateEntry, exactEntry, resolve } from './resolve.js';
 import type { ResolveResult, ResolutionProblem } from './result.js';
 import type { Timeline, TimelineEntry } from './timeline.js';
 
@@ -17,10 +18,13 @@ const u1Words = [timing('the', 0, 300), timing('sun', 300, 800), timing('burns',
 const u2Words = [timing('earth', 1_400, 2_000), timing('tilts', 2_000, 2_600)];
 const u3Words = [timing('the', 2_600, 3_000), timing('shadow', 3_000, 3_800)];
 
-const allTimings: Record<string, WordTiming[] | null> = {
-  u1: u1Words,
-  u2: u2Words,
-  u3: u3Words,
+// One table for the speech: each entry is that utterance's own start, measured
+// length and word timings. These three start at 0 and their durations are their
+// last word's end, so every number T10 asserted below is unchanged.
+const allUtterances: Record<string, UtteranceMeasurement> = {
+  u1: { startMs: 0, durationMs: 1_400, wordTimings: u1Words },
+  u2: { startMs: 0, durationMs: 2_600, wordTimings: u2Words },
+  u3: { startMs: 0, durationMs: 3_800, wordTimings: u3Words },
 };
 
 function sheet(cues: readonly Cue[], utteranceIds: readonly string[]): CueSheet {
@@ -36,14 +40,18 @@ function sheet(cues: readonly Cue[], utteranceIds: readonly string[]): CueSheet 
   };
 }
 
-function pointCueWithAt(at: Cue['at']): Cue {
+function pointCueAt(id: string, at: Cue['at']): Cue {
   return {
-    id: 'c-point-earth',
+    id,
     track: 'teacher',
     primitive: 'teacher.point',
     at,
     params: { hand: 'right', target: 'earth.patch' },
   };
+}
+
+function pointCueWithAt(at: Cue['at']): Cue {
+  return pointCueAt('c-point-earth', at);
 }
 
 const lockOffCue: Cue = {
@@ -100,7 +108,7 @@ describe('resolve — word-anchored placement', () => {
         [pointCueWithAt({ utteranceId: 'u1', wordIndex: 1 }), lockOffCue, animateCue],
         ['u1', 'u2', 'u3'],
       ),
-      wordTimings: allTimings,
+      utterances: allUtterances,
     });
 
     const timeline = expectOk(result);
@@ -116,7 +124,7 @@ describe('resolve — word-anchored placement', () => {
     const timeline = expectOk(
       resolve({
         cueSheet: sheet([holdCue, pointCueWithAt({ utteranceId: 'u1', wordIndex: 0 })], ['u1']),
-        wordTimings: allTimings,
+        utterances: allUtterances,
       }),
     );
 
@@ -133,7 +141,7 @@ describe('resolve — word-anchored placement', () => {
           [pointCueWithAt({ utteranceId: 'u1', wordIndex: 1 }), animateCue, holdCue],
           ['u1', 'u2', 'u3'],
         ),
-        wordTimings: allTimings,
+        utterances: allUtterances,
       }),
     );
 
@@ -149,7 +157,7 @@ describe('resolve — word-anchored placement', () => {
           [animateCue, holdCue, pointCueWithAt({ utteranceId: 'u1', wordIndex: 1 })],
           ['u1', 'u2', 'u3'],
         ),
-        wordTimings: allTimings,
+        utterances: allUtterances,
       }),
     );
 
@@ -160,18 +168,113 @@ describe('resolve — word-anchored placement', () => {
     ]);
   });
 
-  it('marks every entry exact, because the fallback path is T11', () => {
+  it('marks every exactly placed entry approximate: false and lists none as approximate', () => {
     const timeline = expectOk(
       resolve({
         cueSheet: sheet(
           [pointCueWithAt({ utteranceId: 'u1', wordIndex: 1 }), lockOffCue, animateCue],
           ['u1', 'u2', 'u3'],
         ),
-        wordTimings: allTimings,
+        utterances: allUtterances,
       }),
     );
 
     expect(timeline.entries.map((entry) => entry.approximate)).toEqual([false, false, false]);
+    expect(timeline.approximateCueIds).toEqual([]);
+  });
+
+  it('adds the utterance start to a word timing, because startMs is utterance-relative', () => {
+    // u4 starts at 10,000 and its second word starts 300 into the utterance, so
+    // the cue belongs at 10,300. A resolver that used word.startMs alone would
+    // place it at 300, ten seconds early.
+    const timeline = expectOk(
+      resolve({
+        cueSheet: sheet([pointCueAt('c-late-word', { utteranceId: 'u4', wordIndex: 1 })], ['u4']),
+        utterances: {
+          u4: {
+            startMs: 10_000,
+            durationMs: 1_400,
+            wordTimings: [timing('the', 0, 300), timing('sun', 300, 800)],
+          },
+        },
+      }),
+    );
+
+    expect(entryAt(timeline, 'c-late-word').atMs).toBe(10_300);
+    expect(entryAt(timeline, 'c-late-word').approximate).toBe(false);
+    expect(timeline.approximateCueIds).toEqual([]);
+  });
+});
+
+describe('resolve — the missing-timings fallback', () => {
+  it('spreads a word across the measured duration and marks the cue approximate', () => {
+    // 'u1 is spoken' is three words. Utterance start 500, measured duration
+    // 1,000: 500 + round(0/3 * 1000) = 500, 500 + round(1/3 * 1000) = 833,
+    // 500 + round(2/3 * 1000) = 1167.
+    const timeline = expectOk(
+      resolve({
+        cueSheet: sheet(
+          [
+            pointCueAt('c-word-0', { utteranceId: 'u1', wordIndex: 0 }),
+            pointCueAt('c-word-1', { utteranceId: 'u1', wordIndex: 1 }),
+            pointCueAt('c-word-2', { utteranceId: 'u1', wordIndex: 2 }),
+          ],
+          ['u1'],
+        ),
+        utterances: { u1: { startMs: 500, durationMs: 1_000, wordTimings: null } },
+      }),
+    );
+
+    expect(entryAt(timeline, 'c-word-0').atMs).toBe(500);
+    expect(entryAt(timeline, 'c-word-1').atMs).toBe(833);
+    expect(entryAt(timeline, 'c-word-2').atMs).toBe(1_167);
+    expect(timeline.entries.map((entry) => entry.approximate)).toEqual([true, true, true]);
+    expect(timeline.approximateCueIds).toEqual(['c-word-0', 'c-word-1', 'c-word-2']);
+  });
+
+  it('treats an empty word-timings array as no timings, not as a division by zero', () => {
+    // An empty array is what a TTS response with no word boundaries produces:
+    // it must take the same path as null, using the measured duration.
+    const timeline = expectOk(
+      resolve({
+        cueSheet: sheet([pointCueAt('c-word-1', { utteranceId: 'u1', wordIndex: 1 })], ['u1']),
+        utterances: { u1: { startMs: 500, durationMs: 1_000, wordTimings: [] } },
+      }),
+    );
+
+    expect(entryAt(timeline, 'c-word-1').atMs).toBe(833);
+    expect(entryAt(timeline, 'c-word-1').approximate).toBe(true);
+    expect(timeline.approximateCueIds).toEqual(['c-word-1']);
+  });
+
+  it('rejects a fallback word index past the script text, with no zero-time entry', () => {
+    // The text has three words, so index 3 addresses nothing. A silent clamp or
+    // a default instant would hide a sheet whose text and word index disagree.
+    const input = {
+      cueSheet: sheet([pointCueAt('c-word-3', { utteranceId: 'u1', wordIndex: 3 })], ['u1']),
+      utterances: { u1: { startMs: 500, durationMs: 1_000, wordTimings: null } },
+    };
+
+    expect(() => resolve(input)).not.toThrow();
+
+    const result = resolve(input);
+    const problem = expectSingleProblem(result);
+    expect(problem.code).toBe('WORD_INDEX_OUT_OF_RANGE');
+    expect(problem.cueId).toBe('c-word-3');
+    expect(result).not.toHaveProperty('timeline');
+  });
+});
+
+describe('resolve — entry construction', () => {
+  it('types the fallback entry approximate: true and the exact entry approximate: false', () => {
+    // The guarantee is a type, not a value: an approximate entry cannot be built
+    // without the marker, and no boolean argument chooses the path.
+    expectTypeOf(approximateEntry(lockOffCue, 1_400).approximate).toEqualTypeOf<true>();
+    expectTypeOf(exactEntry(lockOffCue, 1_400).approximate).toEqualTypeOf<false>();
+
+    // The runtime values agree, which is what the marker list is read from.
+    expect(approximateEntry(lockOffCue, 1_400).approximate).toBe(true);
+    expect(exactEntry(lockOffCue, 1_400).approximate).toBe(false);
   });
 });
 
@@ -184,7 +287,7 @@ describe('resolve — timeline durationMs', () => {
           [pointCueWithAt({ utteranceId: 'u1', wordIndex: 1 }), lockOffCue],
           ['u1', 'u2', 'u3'],
         ),
-        wordTimings: allTimings,
+        utterances: allUtterances,
       }),
     );
     expect(speechLed.durationMs).toBe(3_800);
@@ -196,10 +299,37 @@ describe('resolve — timeline durationMs', () => {
           [pointCueWithAt({ utteranceId: 'u1', wordIndex: 1 }), holdCue],
           ['u1', 'u2', 'u3'],
         ),
-        wordTimings: allTimings,
+        utterances: allUtterances,
       }),
     );
     expect(entryLed.durationMs).toBe(13_900);
+  });
+
+  it('covers the last utterance start plus its final word, or its measured duration', () => {
+    // u4 starts at 10,000. Timed: the last word ends 800 into the utterance, so
+    // the lesson ends at 10,800 — the word's own endMs alone would say 800.
+    const timed = expectOk(
+      resolve({
+        cueSheet: sheet([pointCueAt('c-late-word', { utteranceId: 'u4', wordIndex: 0 })], ['u4']),
+        utterances: {
+          u4: {
+            startMs: 10_000,
+            durationMs: 900,
+            wordTimings: [timing('the', 0, 300), timing('sun', 300, 800)],
+          },
+        },
+      }),
+    );
+    expect(timed.durationMs).toBe(10_800);
+
+    // Measured but untimed: the measured duration is the only end there is.
+    const measured = expectOk(
+      resolve({
+        cueSheet: sheet([pointCueAt('c-word-0', { utteranceId: 'u4', wordIndex: 0 })], ['u4']),
+        utterances: { u4: { startMs: 10_000, durationMs: 900, wordTimings: null } },
+      }),
+    );
+    expect(measured.durationMs).toBe(10_900);
   });
 
   it('contributes nothing for a last utterance with no timings, and does not reject for it', () => {
@@ -208,7 +338,7 @@ describe('resolve — timeline durationMs', () => {
     const timeline = expectOk(
       resolve({
         cueSheet: sheet([pointCueWithAt({ utteranceId: 'u1', wordIndex: 1 })], ['u1', 'u3']),
-        wordTimings: { u1: u1Words },
+        utterances: { u1: { startMs: 0, durationMs: 1_400, wordTimings: u1Words } },
       }),
     );
 
@@ -221,7 +351,14 @@ describe('resolve — timeline durationMs', () => {
     const timeline = expectOk(
       resolve({
         cueSheet: sheet([pointCueWithAt({ utteranceId: 'u1', wordIndex: 1 })], ['u1', 'u2']),
-        wordTimings: { u1: u1Words, u2: [timing('earth', 900, 1_000), timing('axis', 100, 500)] },
+        utterances: {
+          u1: { startMs: 0, durationMs: 1_400, wordTimings: u1Words },
+          u2: {
+            startMs: 0,
+            durationMs: 1_000,
+            wordTimings: [timing('earth', 900, 1_000), timing('axis', 100, 500)],
+          },
+        },
       }),
     );
 
@@ -246,9 +383,9 @@ describe('resolve — rejections', () => {
       cues: [negativeIndexCue],
     } as unknown as CueSheet;
 
-    expect(() => resolve({ cueSheet: badSheet, wordTimings: allTimings })).not.toThrow();
+    expect(() => resolve({ cueSheet: badSheet, utterances: allUtterances })).not.toThrow();
 
-    const problem = expectSingleProblem(resolve({ cueSheet: badSheet, wordTimings: allTimings }));
+    const problem = expectSingleProblem(resolve({ cueSheet: badSheet, utterances: allUtterances }));
     expect(problem.code).toBe('WORD_INDEX_OUT_OF_RANGE');
     expect(problem.cueId).toBe('c-point-earth');
   });
@@ -256,41 +393,59 @@ describe('resolve — rejections', () => {
   it('rejects a word index at the timing array length', () => {
     const badSheet = sheet([pointCueWithAt({ utteranceId: 'u1', wordIndex: 3 })], ['u1']);
 
-    expect(() => resolve({ cueSheet: badSheet, wordTimings: allTimings })).not.toThrow();
+    expect(() => resolve({ cueSheet: badSheet, utterances: allUtterances })).not.toThrow();
 
-    const problem = expectSingleProblem(resolve({ cueSheet: badSheet, wordTimings: allTimings }));
+    const problem = expectSingleProblem(resolve({ cueSheet: badSheet, utterances: allUtterances }));
     expect(problem.code).toBe('WORD_INDEX_OUT_OF_RANGE');
     expect(problem.cueId).toBe('c-point-earth');
   });
 
-  it('rejects a word-anchored cue whose utterance has no timing entry', () => {
+  it('rejects a word-anchored cue whose utterance has no measurement entry', () => {
     const badSheet = sheet([pointCueWithAt({ utteranceId: 'u1', wordIndex: 1 })], ['u1']);
 
-    expect(() => resolve({ cueSheet: badSheet, wordTimings: {} })).not.toThrow();
+    expect(() => resolve({ cueSheet: badSheet, utterances: {} })).not.toThrow();
 
-    const problem = expectSingleProblem(resolve({ cueSheet: badSheet, wordTimings: {} }));
+    const problem = expectSingleProblem(resolve({ cueSheet: badSheet, utterances: {} }));
     expect(problem.code).toBe('TIMINGS_MISSING');
     expect(problem.cueId).toBe('c-point-earth');
   });
 
-  it('rejects a word-anchored cue whose utterance timings are null', () => {
+  it('rejects a cue whose utterance timings are null and whose duration was never measured', () => {
+    // T10 rejected every null-timing cue. Since T11 only a measured duration
+    // opens the fallback, so `durationMs: 0` is the case that still refuses.
     const badSheet = sheet([pointCueWithAt({ utteranceId: 'u2', wordIndex: 0 })], ['u1', 'u2']);
+    const input = {
+      cueSheet: badSheet,
+      utterances: { u2: { startMs: 1_400, durationMs: 0, wordTimings: null } },
+    };
 
-    expect(() => resolve({ cueSheet: badSheet, wordTimings: { u2: null } })).not.toThrow();
+    expect(() => resolve(input)).not.toThrow();
 
-    const problem = expectSingleProblem(resolve({ cueSheet: badSheet, wordTimings: { u2: null } }));
+    const result = resolve(input);
+    const problem = expectSingleProblem(result);
     expect(problem.code).toBe('TIMINGS_MISSING');
     expect(problem.cueId).toBe('c-point-earth');
+    // Refused, not placed at the utterance start: a zero-time entry would look
+    // like a measurement, which is the bug this task exists to prevent.
+    expect(result).not.toHaveProperty('timeline');
   });
 
   it('rejects timings whose startMs values are not strictly ascending', () => {
     const outOfOrder = [timing('sun', 0, 300), timing('rose', 600, 900), timing('early', 500, 800)];
     const badSheet = sheet([pointCueWithAt({ utteranceId: 'u1', wordIndex: 0 })], ['u1']);
 
-    expect(() => resolve({ cueSheet: badSheet, wordTimings: { u1: outOfOrder } })).not.toThrow();
+    expect(() =>
+      resolve({
+        cueSheet: badSheet,
+        utterances: { u1: { startMs: 0, durationMs: 1_800, wordTimings: outOfOrder } },
+      }),
+    ).not.toThrow();
 
     const problem = expectSingleProblem(
-      resolve({ cueSheet: badSheet, wordTimings: { u1: outOfOrder } }),
+      resolve({
+        cueSheet: badSheet,
+        utterances: { u1: { startMs: 0, durationMs: 1_800, wordTimings: outOfOrder } },
+      }),
     );
     expect(problem.code).toBe('TIMINGS_OUT_OF_ORDER');
     expect(problem.cueId).toBe('c-point-earth');
@@ -302,10 +457,18 @@ describe('resolve — rejections', () => {
     const overlapping = [timing('sun', 0, 400), timing('rose', 300, 900)];
     const badSheet = sheet([pointCueWithAt({ utteranceId: 'u2', wordIndex: 1 })], ['u1', 'u2']);
 
-    expect(() => resolve({ cueSheet: badSheet, wordTimings: { u2: overlapping } })).not.toThrow();
+    expect(() =>
+      resolve({
+        cueSheet: badSheet,
+        utterances: { u2: { startMs: 0, durationMs: 2_600, wordTimings: overlapping } },
+      }),
+    ).not.toThrow();
 
     const problem = expectSingleProblem(
-      resolve({ cueSheet: badSheet, wordTimings: { u2: overlapping } }),
+      resolve({
+        cueSheet: badSheet,
+        utterances: { u2: { startMs: 0, durationMs: 2_600, wordTimings: overlapping } },
+      }),
     );
     expect(problem.code).toBe('TIMINGS_OVERLAP');
     expect(problem.cueId).toBe('c-point-earth');
