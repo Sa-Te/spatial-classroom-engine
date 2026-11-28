@@ -394,6 +394,8 @@ durationMs = max(entry.atMs + entry.durationMs, last utterance end)
 
 Adopted at T10: the resolver returns a discriminated `ResolveResult` rather than a bare `Timeline` — `{ ok: true; timeline: Timeline }` or `{ ok: false; problems: ReadonlyArray<{ cueId: string; code: ProblemCode; detail: string }> }`. It never throws on authored data and never returns `undefined`; a sheet that cannot be played is a typed rejection carrying every problem found. `ProblemCode` is closed at four and lives in `packages/timeline`, because these name this resolver's behaviour and not a stored shape: `WORD_INDEX_OUT_OF_RANGE` (`wordIndex` below `0`, or at/beyond the timing array's length), `TIMINGS_MISSING` (the addressed utterance has no timings — key absent or `null`), `TIMINGS_OUT_OF_ORDER` (a `startMs` that is not strictly greater than its predecessor's), `TIMINGS_OVERLAP` (a word's `endMs` beyond the next word's `startMs`). Only the timing arrays a cue actually references are validated, so an unused bad array is not that sheet's problem. T10 marks every entry `approximate: false`; the fallback path that may set `true` is T11's.
 
+`TimelineEntry.track` is the primitive's registry track, not the cue's declared `track`: the cue sheet also admits `board` and `audio`, which the entry does not, and the registry lookup is total over the closed nine. Whether a cue's declared track must agree with its primitive's is a scene-aware T12/T15 rule; T10 does not invent a problem code for it.
+
 ### 10.3  Drift budget
 
 Every resolved cue is compared against its intended position in the golden fixture:
