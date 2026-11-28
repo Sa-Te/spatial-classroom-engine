@@ -390,6 +390,8 @@ reject or flag entries violating ordering rules (§9.4)
 durationMs = max(entry.atMs + entry.durationMs, last utterance end)
 ```
 
+`TimelineEntry` is adopted by instruction at T9, not derived from this section: `{ cueId, atMs, primitive: PrimitiveId, track: "camera" | "teacher" | "scene" | "light" | "learner", approximate }`. At T9 `Timeline` is the ordered `TimelineEntry[]`; the `durationMs` field in §10.1 lands with the resolver in T10. Tie-break precedence between different tracks at the same `atMs` is not part of the sorter; T12's ordering rules reject illegal sequences, and no track order is invented here.
+
 ### 10.3  Drift budget
 
 Every resolved cue is compared against its intended position in the golden fixture:

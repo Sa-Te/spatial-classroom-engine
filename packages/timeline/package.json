@@ -7,6 +7,9 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "@sce/contracts": "workspace:*"
+  },
   "devDependencies": {
     "@types/node": "^20.19.43",
     "typescript": "^5.9.3",
