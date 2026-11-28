@@ -32,6 +32,9 @@ permissions:
   - action: shell
     resource: "pnpm format:check*"
     effect: allow
+  - action: shell
+    resource: "pnpm verify*"
+    effect: allow
 ---
 
 You review. You never edit.

@@ -50,10 +50,12 @@ Use `graphify` for code discovery: `graphify update .` after structural changes;
    reference, "done when", explicit out-of-scope list, and the test that must
    exist at the end.
 3. Delegate to `@coder` with ONLY those file paths. Never hand over the repo.
-4. When the coder returns, hand the diff to `@reviewer`.
+4. When the coder returns, delegate the review as its own standalone process:
+   `opencode run --agent reviewer ...`. Never a nested subagent call chained onto
+   a turn that has already returned.
 5. If any commit landed after the reviewer's verdict — including the coder
    applying the reviewer's own suggestions — delegate a delta review of that
-   commit to the reviewer before the task is reported complete. A task is not
+   commit as its own standalone process before the task is reported complete. A task is not
    reported as reviewed until the delta review has happened. If it is refused
    or skipped, the task is not complete: report it to the human as
    unreviewed.
@@ -68,9 +70,11 @@ invocation. If the second attempt also lacks shell access, stop and report to th
 human — a read-only opinion is not verification, and accepting it is how a task
 ships with one execution instead of two.
 
-Delegate each review as its own invocation and never chain one onto a session that
-has already returned, because the reviewer's shell failures cluster on back-to-back
-invocations within one turn. The delegation must not carry shell restrictions.
+Delegate each review, delta review and retro review as its own standalone process
+(`opencode run --agent reviewer ...`), never as a nested subagent call chained onto a
+turn that has already returned. Evidence: fifteen denials, all on nested calls;
+standalone execution succeeded on the same configuration (`docs/GOTCHAS.md` §7.4).
+The delegation must not carry shell restrictions.
 
 ## Hard limits
 - One task in flight.
