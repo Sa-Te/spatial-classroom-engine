@@ -365,12 +365,18 @@ Scene-aware checks are not schema work. `scene.setParam` cannot verify a value a
 ```ts
 export interface Clock { now(): number; }
 
-export interface Timeline { entries: TimelineEntry[]; durationMs: number; }
+export interface Timeline {
+  entries: TimelineEntry[];
+  durationMs: number;
+  approximateCueIds: string[];
+}
 
-export function resolveTimeline(
-  cueSheet: CueSheet,
-  utteranceTimings: Record<string, WordTiming[] | null>,
-): Timeline;
+export interface ResolveInput {
+  cueSheet: CueSheet;
+  utterances: Record<string, UtteranceMeasurement>;
+}
+
+export function resolve(input: ResolveInput): ResolveResult;
 ```
 
 Pure. No clock, no I/O, no randomness.
