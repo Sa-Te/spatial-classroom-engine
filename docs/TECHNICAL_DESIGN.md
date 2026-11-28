@@ -443,13 +443,33 @@ atMs = utterance.startMs + round((wordIndex / wordCount) * utterance.durationMs)
 
 ### 10.4  Ordering rules, enforced by the resolver
 
-1. teacher.lookAt(t) before teacher.point(t) before the word that names t.
+§1.7.2's deixis order is the origin of the first two rules: `teacher.lookAt(t)` → `teacher.point(t)` → the narration word that names `t`. They are enforced by `checkOrdering` (T12), a second pure pass over the timeline `resolve` has already built:
 
-2. A camera cut takes effect at its atMs and invalidates in-flight interpolation.
+```ts
+export function checkOrdering(input: ResolveInput, timeline: Timeline): ResolveResult;
+```
 
-3. No two scene.setParam cues on the same parameter may overlap without an intervening animateParam.
+It consumes that timeline and returns the shared `ResolveResult` from `packages/timeline/src/result.ts` — `{ ok: true; timeline }` carrying the same object, or `{ ok: false; problems }`. It never calls `resolve`, never re-sorts the entries (§10.2 has the one sorter), never throws and never returns `undefined`. `ProblemCode` widens by the five ordering codes below, and `ResolutionProblem` gains one optional field, `rule`: the stable human-readable name of the rule that fired. `code` is the identifier tests assert on; `detail` names the cue and the numbers. Problems produced by `resolve` (§10.2) carry no `rule`.
 
-4. learner.holdSilence blocks all tracks except camera for its duration.
+| Code | `rule` | Rejected when |
+| --- | --- | --- |
+| `TRACK_MISMATCH` | cue track matches its primitive track | the cue's declared `track` differs from `primitiveRegistry[cue.primitive].track` |
+| `POINT_WITHOUT_LOOKAT` | look at the target before pointing at it | a `teacher.point` on `t` at `T` has no `teacher.lookAt` on exactly the same `t` with `atMs <= T` |
+| `POINT_AFTER_WORD` | point on or before the word that names the target | the point cue's own utterance says a word naming `t`, and that word starts strictly before `T` |
+| `SETPARAM_OVERLAP` | an animateParam bridges two setParams on one parameter | two `scene.setParam` cues on one parameter have no `scene.animateParam` on it in `(earlier.atMs, later.atMs]` |
+| `NON_CAMERA_IN_SILENCE` | only camera cues run during a silence | any non-camera entry other than the hold itself has `atMs` in `[T, T + ms)` of a `learner.holdSilence` |
+
+Every problem names the offending cue — for `NON_CAMERA_IN_SILENCE` that is the cue inside the silence, not the hold — and the list is sorted ascending by the offending entry's `atMs`, then by `cueId`, so one sheet always reports one list in one order. No track precedence is applied: an illegal sequence is rejected, not reordered.
+
+`TRACK_MISMATCH` is T12's alone. The cue sheet admits `board` and `audio`, which no primitive is on, and a cue whose label disagrees with its primitive would be routed to the wrong player group.
+
+`POINT_WITHOUT_LOOKAT` requires exact target equality; a simultaneous `lookAt` on a different anchor never satisfies it. A `lookAt` at exactly `T` does.
+
+`POINT_AFTER_WORD` reads the point cue's own utterance only, so another utterance's word cannot make this point late. The **naming form is adopted by instruction** at T12, because this design states none: take the anchor's last dotted segment, lowercase it, strip every non-letter character (`sun.Earth` → `earth`, `Earth,` → `earth`), and compare it to each word of that utterance normalised the same way. The naming word at exactly `T` passes — the comparison is strict. When the utterance has no word timings (absent, `null`, or an empty array), or no word names the anchor, the rule passes vacuously: with no measured word there is nothing to be late against, and guessing a word position is the fallback's job (§10.3), not this rule's.
+
+`NON_CAMERA_IN_SILENCE` treats the silence as a closed-open window `[T, T + ms)`. **Both boundaries are adopted by instruction** at T12: a cue at exactly `T` is inside and is rejected; a cue at exactly `T + ms` is outside and passes. A `camera` cue inside passes, and the hold cue itself is excluded by id — it is a `learner` cue sitting at its own start.
+
+Out of scope here, owned elsewhere: `scene.setParam` values are not checked against a scene's declared `Manipulable` range, anchor existence is not checked, and primitive membership of a scene is not checked — all three need a scene graph and are T15's. `camera.cut` invalidating an in-flight interpolation is player behaviour, P3 runtime, and not a property of the resolved timeline.
 
 ### 10.5  The player
 

@@ -1,9 +1,9 @@
 import type { Timeline } from './timeline.js';
 
 /**
- * Every way the resolver can refuse an authored cue sheet. The names live in
- * packages/timeline rather than packages/contracts because they describe this
- * resolver's behaviour, not a stored shape (T10).
+ * Every way the resolver or the ordering pass can refuse an authored cue sheet.
+ * The names live in packages/timeline rather than packages/contracts because
+ * they describe this package's behaviour, not a stored shape (T10, T12).
  *
  * `TIMINGS_MISSING` is now narrow (T11): it covers a word-anchored cue whose
  * utterance has neither word timings nor a measured duration, and the case where
@@ -12,12 +12,22 @@ import type { Timeline } from './timeline.js';
  * §10.3).
  */
 export type ProblemCode =
-  'WORD_INDEX_OUT_OF_RANGE' | 'TIMINGS_MISSING' | 'TIMINGS_OUT_OF_ORDER' | 'TIMINGS_OVERLAP';
+  | 'WORD_INDEX_OUT_OF_RANGE'
+  | 'TIMINGS_MISSING'
+  | 'TIMINGS_OUT_OF_ORDER'
+  | 'TIMINGS_OVERLAP'
+  | 'TRACK_MISMATCH'
+  | 'POINT_WITHOUT_LOOKAT'
+  | 'POINT_AFTER_WORD'
+  | 'SETPARAM_OVERLAP'
+  | 'NON_CAMERA_IN_SILENCE';
 
 /** One refused cue, named. Authoring data is untrusted, so a problem is data, not a throw. */
 export interface ResolutionProblem {
   cueId: string;
   code: ProblemCode;
+  /** The ordering rule that produced this problem; absent on resolver problems. */
+  rule?: string;
   detail: string;
 }
 
