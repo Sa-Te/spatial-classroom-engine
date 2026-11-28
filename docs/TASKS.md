@@ -21,6 +21,10 @@ Phase definition of done: `docs/ROADMAP.md` P1 — `pnpm verify`, the named test
 - T4 and T6 shipped on static reviews with no delta. Both are recorded as unreviewed, not as passes, in their Done entries. A future session can retro-fit both by making one reviewer invocation that actually executes cover `a7be114^1..a7be114` and `b1c01a8^1..b1c01a8` together.
 - T12: its stability fixture must use a track order that conflicts with any precedence it considers, because the current `camera, teacher, scene` order coincides with the track union's declaration order and would pass under a precedence-based tie-break.
 - Judge scope for doc-only deltas: ask the judge against the accumulated `git diff origin/main...HEAD`, not the docs-only delta. T10's delta judge marked D3 UNPROVABLE by construction, because the claim under test (`resolve.test.ts`'s `not.toThrow` assertions) sat outside a TASKS+GOTCHAS diff. An UNPROVABLE there is a scope artefact, not a defect.
+- CI runs `actions/checkout@v4` and `actions/setup-node@v4`, which emit Node 20 deprecation warnings and will break when GitHub removes the fallback. Target: its own small chore PR with CI proof, not a contracts change.
+- `durationMs` has a runtime non-negative guard but no type-level constraint. Accepted for now; reconsider only if a defect appears.
+- `textOfUtterance` is O(n) per fallback cue. Acceptable at present scale; note it.
+- The fallback test helper's utterance text is always three words, so the word-count edge is untested above three. Widen the helper when a fallback case needs it.
 
 ## Done
 
@@ -92,5 +96,5 @@ Phase definition of done: `docs/ROADMAP.md` P1 — `pnpm verify`, the named test
   - Purity coverage proved by a temporary `Date.now()` reporting `src/fallback.ts:61 Date.now`, then green after removal; no second purity test.
   - T10 tests: all 14 survive, re-shaped to the utterance table; two renamed (`marks every exactly placed entry approximate: false…`, `rejects a cue whose utterance timings are null and whose duration was never measured`); none deleted. `timeline.test.ts` is unchanged because it constructs no `Timeline` and a compile-time fixture there would assert a constant (§1.10.2).
   - Size: extraction estimated 240 non-test lines (under the 280 gate); actual non-test changed lines are 307, the overage in §10.3 and the resolver's problem-detail helpers. Recorded, not hidden.
-  - Known doc debt, outside T11's §10.2/§10.3 scope: §10.1 still shows `resolveTimeline(cueSheet, utteranceTimings: Record<string, WordTiming[] | null>)`, which now contradicts §10.2 and wants its own decision.
+  - Doc debt paid in PR #25: §10.1's pre-T11 `resolveTimeline(cueSheet, utteranceTimings)` contradicted §10.2; it now shows `resolve(ResolveInput): ResolveResult` and `Timeline.approximateCueIds`.
   - This review's four denials move the GOTCHAS §7.4 counter from 44 to 48 (recorded in the same docs delta).
