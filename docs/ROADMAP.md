@@ -86,7 +86,7 @@ T6B follows T7 on purpose. The discriminated union for `Cue.params` needs all ni
 
 **In scope**
 - Zod schemas and inferred types in `packages/contracts` for `EvidencePacket`, `LessonPlan`, `SceneSpec`, `CueSheet`, `PrimitiveId`, and API error shapes. [DERIVED: docs/TECHNICAL_DESIGN.md §5, §6, §7, §8, §9, §14]
-- Pure `packages/timeline`: `Clock`, `resolveTimeline`, `Timeline`, `TimelineEntry`, ordering rules, and drift reporting. [DERIVED: docs/TECHNICAL_DESIGN.md §10; docs/adr/0003-pure-timeline-resolver.md]
+- Pure `packages/timeline`: `Clock`, `resolve`, `Timeline`, `TimelineEntry`, ordering rules, and drift reporting. [DERIVED: docs/TECHNICAL_DESIGN.md §10; docs/adr/0003-pure-timeline-resolver.md]
 - Pure `packages/scene`: scene graph, anchors, primitive registry, validators, and physics helpers. [DERIVED: docs/TECHNICAL_DESIGN.md §4, §9, §11, §12]
 - Coordinate and unit convention from ADR 0007.
 - Provider ports and deterministic mocks from ADR 0008 where a later phase needs them.
@@ -100,7 +100,7 @@ T6B follows T7 on purpose. The discriminated union for `Cue.params` needs all ni
 
 **Definition of done**
 1. `packages/contracts` exports the schemas in the technical design, and `pnpm typecheck` passes.
-2. `resolveTimeline` is pure: no `Date.now()`, `performance.now()`, `fetch`, `fs`, or randomness in `packages/timeline`.
+2. `resolve` is pure: no `Date.now()`, `performance.now()`, `fetch`, `fs`, or randomness in `packages/timeline`.
 3. A `ManualClock` test proves two reads without advancement are equal and advancing by 500 returns exactly 500 more.
 4. A resolver test asserts state at three named instants and a negative case for a missing anchor, unknown primitive, NaN/Infinity, and out-of-order word timings.
 5. `packages/timeline` and `packages/scene` tests run under plain Node with no jsdom; `pnpm test` passes.

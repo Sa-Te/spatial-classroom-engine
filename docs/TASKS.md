@@ -10,7 +10,21 @@ Phase definition of done: `docs/ROADMAP.md` P1 — `pnpm verify`, the named test
 
 ## Ready
 
-(nothing)
+### T13 — Drift report
+
+- **Status:** ready
+- **Files:** `packages/timeline/src/drift.ts`, `packages/timeline/src/drift.test.ts`, `docs/TECHNICAL_DESIGN.md` §10.3.
+- **Done when:**
+  - A drift report is computed from a fixture carrying an `intendedMs` per cue, and reports `worstCaseDrift` as the maximum absolute difference between each entry's resolved `atMs` and its `intendedMs`.
+  - Approximate cues are reported separately, taken from `Timeline.approximateCueIds`, with their own worst-case figure alongside the exact cues' figure rather than merged into one number.
+  - There is no threshold, no comparison to a ceiling, and no failure path. OPEN-2 is unanswered, so the report measures and reports only. A test asserts the report contains no threshold field.
+  - A fixture with zero approximate cues reports an empty approximate section rather than omitting the field.
+  - §10.3 records that this report is measurement only and that the ceiling arrives with OPEN-2.
+  - No ordering, no validation, no executor, and no wiring of `checkOrdering`.
+- **Out of scope:** any ceiling, failing gate, ordering rule, scene or executor work. The ceiling waits for OPEN-2.
+- **Proving command:** `pnpm --filter @sce/timeline exec vitest run src/drift.test.ts && pnpm typecheck && pnpm format:check`
+- **Skill:** test-driven-development
+- **Estimated:** about 100 changed lines
 
 ## Deferred housekeeping
 
@@ -24,6 +38,7 @@ Phase definition of done: `docs/ROADMAP.md` P1 — `pnpm verify`, the named test
 - `durationMs` has a runtime non-negative guard but no type-level constraint. Accepted for now; reconsider only if a defect appears.
 - `textOfUtterance` is O(n) per fallback cue. Acceptable at present scale; note it.
 - The fallback test helper's utterance text is always three words, so the word-count edge is untested above three. Widen the helper when a fallback case needs it.
+- `checkOrdering` has no caller and is not wired into `resolve`; its consumer is P2's authoring pipeline, and possibly T16's reference test. Do not couple it to the drift report, which has no need for ordering rules.
 
 ## Done
 
@@ -102,7 +117,7 @@ Phase definition of done: `docs/ROADMAP.md` P1 — `pnpm verify`, the named test
   - Naming form: last dotted segment, lowercased, `[^a-z]` stripped; measured only against the point cue's own utterance; a word strictly before `T`; vacuous when that utterance has no timings. One test proves another utterance's word cannot make a point late.
   - holdSilence window `[T, T + ms)`: a cue at `T` is rejected, one at `T + ms` passes; camera entries and the hold cue itself are exempt.
   - Shared result: `result.ts` widened to nine codes with one optional `rule`; `checkOrdering` imports `ResolveResult`, calls neither `resolve` nor `sortTimeline`, and returns the passed timeline object unchanged.
-  - Size: extraction was about 210 non-test lines (under the 300 split gate); actual non-test changed lines are 305, the overage in rule comments and detail strings. Recorded, not hidden.
+  - Size: extraction was about 210 non-test lines, under the task's own 300-line extraction gate — a different rule from `AGENTS.md` §1.11's ~300-line signal, which asks for a responsibilities review, not a split. Actual non-test changed lines are 305, the overage in rule comments and detail strings. Recorded, not hidden.
   - Deviation from the file list: `TECHNICAL_DESIGN` §10.2 and the `resolve.ts` comment were corrected because the widened `ProblemCode` made "closed at four" and "scene-aware T12/T15" false; the cross-utterance test was added on review. No Done-when deviation.
   - Judge observations not taken: cross-rule dedup by `code:cueId` is undocumented (low-risk); a degenerate anchor with no letters passes `POINT_AFTER_WORD` vacuously, which §10.4 states.
   - The GOTCHAS §7.4 counter is a snapshot (51) and is not re-stamped for this review, per its own clause.

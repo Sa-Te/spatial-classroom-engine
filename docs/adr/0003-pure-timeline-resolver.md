@@ -6,7 +6,7 @@
 
 ## Context
 
-[AGENTS.md](../../AGENTS.md) §1.2 invariants 3 and 4 require `resolveTimeline(cueSheet, wordTimings)` to perform no I/O, read no clock, and use no randomness, and require the player to receive its clock. [TECHNICAL_DESIGN.md](../TECHNICAL_DESIGN.md) §10 defines the signature, algorithm, drift budget, and ordering rules.
+[AGENTS.md](../../AGENTS.md) §1.2 invariants 3 and 4 require `resolve(input: ResolveInput)` to perform no I/O, read no clock, and use no randomness, and require the player to receive its clock. [TECHNICAL_DESIGN.md](../TECHNICAL_DESIGN.md) §10 defines the signature, algorithm, drift budget, and ordering rules.
 
 ## Options considered
 
