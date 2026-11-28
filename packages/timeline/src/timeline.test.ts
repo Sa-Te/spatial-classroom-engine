@@ -9,6 +9,7 @@ const lockOffCue: TimelineEntry = {
   atMs: 1_200,
   primitive: 'camera.lockOff',
   track: 'camera',
+  durationMs: 0,
   approximate: false,
 };
 
@@ -19,7 +20,7 @@ function entry(
   track: TimelineEntry['track'],
   approximate = false,
 ): TimelineEntry {
-  return { cueId, atMs, primitive, track, approximate };
+  return { cueId, atMs, primitive, track, durationMs: 0, approximate };
 }
 
 describe('sortTimeline', () => {
