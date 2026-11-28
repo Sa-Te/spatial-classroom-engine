@@ -20,6 +20,7 @@ Phase definition of done: `docs/ROADMAP.md` P1 — `pnpm verify`, the named test
 - No verifier agent. The reviewer's shell fault is intermittent, not deterministic, so a second agent would fail intermittently too and add a moving part without removing the unknown. Revisit only if the fault becomes reproducible.
 - T4 and T6 shipped on static reviews with no delta. Both are recorded as unreviewed, not as passes, in their Done entries. A future session can retro-fit both by making one reviewer invocation that actually executes cover `a7be114^1..a7be114` and `b1c01a8^1..b1c01a8` together.
 - T12: its stability fixture must use a track order that conflicts with any precedence it considers, because the current `camera, teacher, scene` order coincides with the track union's declaration order and would pass under a precedence-based tie-break.
+- Judge scope for doc-only deltas: ask the judge against the accumulated `git diff origin/main...HEAD`, not the docs-only delta. T10's delta judge marked D3 UNPROVABLE by construction, because the claim under test (`resolve.test.ts`'s `not.toThrow` assertions) sat outside a TASKS+GOTCHAS diff. An UNPROVABLE there is a scope artefact, not a defect.
 
 ## Done
 
