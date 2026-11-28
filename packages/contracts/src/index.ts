@@ -70,6 +70,7 @@ export {
   type LightKeyFromSun,
   type PrimitiveEntry,
   type PrimitiveLookup,
+  type PrimitiveParams,
   type PrimitiveTrack,
   type SceneAnimateParam,
   type SceneSetParam,

@@ -1,4 +1,10 @@
 import { z } from 'zod';
+import {
+  PrimitiveIdSchema,
+  lookupPrimitive,
+  primitiveRegistry,
+  type PrimitiveId,
+} from './primitives/index.js';
 
 // The cue sheet (docs/TECHNICAL_DESIGN.md §8.2): what is said, and which
 // primitive fires on which word. Field names are fixed by §8.2 and by the
@@ -47,19 +53,59 @@ const explicitAtSchema = z
 // check is needed or wanted.
 const cueAtSchema = z.union([wordAnchoredAtSchema, explicitAtSchema]);
 
-export const CueSchema = z
+// The fields every branch shares, written once: the branch list below spreads
+// this rather than restating five field names nine times.
+const cueSharedShape = {
+  id: idSchema,
+  track: z.enum(['camera', 'teacher', 'scene', 'board', 'light', 'learner', 'audio']),
+  at: cueAtSchema,
+  // §1.7.4: every camera move names the idea it follows.
+  motivation: z.string().min(1).optional(),
+};
+
+// One branch per closed primitive id: `primitive` is the literal and `params` is
+// the schema that registry entry already owns, so no parameter shape is declared
+// twice (ADR 0016). The branch *type* is written from the registry rather than
+// inferred from the map below: a `.map` callback is typed once with `id` widened
+// to PrimitiveId, and `primitiveRegistry[id]['schema']` there is already the
+// union of all nine.
+type CueBranch = {
+  [Id in PrimitiveId]: z.ZodObject<
+    typeof cueSharedShape & {
+      primitive: z.ZodLiteral<Id>;
+      params: (typeof primitiveRegistry)[Id]['schema'];
+    }
+  >;
+}[PrimitiveId];
+
+// The runtime array is exactly one branch per id, generated rather than written
+// out; the assertion attaches the per-id types the map cannot infer.
+const cueBranches = PrimitiveIdSchema.options.map((id) =>
+  z
+    .object({
+      ...cueSharedShape,
+      primitive: z.literal(id),
+      params: primitiveRegistry[id].schema,
+    })
+    .strict(),
+) as unknown as CueBranch[];
+
+// A discriminated union takes a non-empty tuple; primitiveRegistry is a total
+// object over the closed nine, so the generated array is never empty.
+const cueUnion = z.discriminatedUnion('primitive', cueBranches as [CueBranch, ...CueBranch[]]);
+
+// The pre-check exists only because zod's own union issue does not carry the
+// primitive id, and zod stops at the first failure — a branch that fails on its
+// params never reaches a later refine. Naming the primitive is this base
+// object's job; the union above is what the parsed value becomes.
+const cuePreCheck = z
   .object({
-    id: idSchema,
-    track: z.enum(['camera', 'teacher', 'scene', 'board', 'light', 'learner', 'audio']),
-    // PrimitiveId is named in §8.2 but defined nowhere. P1 keeps the field a
-    // string; Q1 narrows it to the closed nine-id union at T6.
+    ...cueSharedShape,
+    // A plain non-empty string rather than the closed enum: a miss has to be
+    // reported with the offending id in the message, which an enum cannot do.
     primitive: z.string().min(1),
-    // Deliberately unvalidated here: §8.2 validates params against the
-    // primitive's own schema. ADR 0016 replaces this record with a
-    // discriminated union keyed on `primitive` at T6.
-    params: z.record(z.string(), z.unknown()),
-    at: cueAtSchema,
-    motivation: z.string().min(1).optional(),
+    // Accepted here, then validated against the entry's schema below.
+    params: z.unknown(),
   })
   .strict()
   .superRefine((cue, ctx) => {
@@ -72,7 +118,27 @@ export const CueSchema = z
         message: `cue ${cue.id} is on the camera track and must declare a motivation`,
       });
     }
+
+    const lookup = lookupPrimitive(cue.primitive);
+    if (!lookup.ok) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['primitive'],
+        message: `cue ${cue.id}: unknown primitive '${cue.primitive}'`,
+      });
+      return;
+    }
+
+    if (!lookup.entry.schema.safeParse(cue.params).success) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['params'],
+        message: `cue ${cue.id}: params do not match primitive '${cue.primitive}'`,
+      });
+    }
   });
+
+export const CueSchema = cuePreCheck.pipe(cueUnion);
 
 export const CueSheetSchema = z
   .object({
