@@ -591,6 +591,8 @@ The human is the gate at step 7. **Do not let an agent commit.** A commit is a j
 
 - When a session drifts, start a new one. Long histories are expensive and produce worse decisions.
 
+- Commit subjects must not exceed 72 characters and must not contain "and", per `AGENTS.md` §1.16. The T6B subject — `feat(contracts): make Cue.params a discriminated union and give LessonPlan a topic` — is 82 characters and is the recorded example of what not to do.
+
 ### 9.2  When to break the loop
 
 Go straight to a human conversation, bypassing the agents, when:

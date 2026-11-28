@@ -12,6 +12,12 @@ permissions:
     resource: "*"
     effect: allow
   - action: edit
+    resource: ".opencode/**"
+    effect: deny
+  - action: edit
+    resource: "opencode.json"
+    effect: deny
+  - action: edit
     resource: "AGENTS.md"
     effect: deny
   - action: edit
