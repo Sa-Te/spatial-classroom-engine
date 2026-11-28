@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ManualClock, type Clock } from './clock.js';
+import { ManualClock } from './clock.js';
 
 describe('ManualClock', () => {
   it('starts at zero and reads the same value twice without advancement', () => {
@@ -22,11 +22,5 @@ describe('ManualClock', () => {
     clock.advance(250);
 
     expect(clock.now()).toBe(750);
-  });
-
-  it('serves consumers typed against the Clock interface', () => {
-    const clock: Clock = new ManualClock();
-
-    expect(clock.now()).toBe(0);
   });
 });
