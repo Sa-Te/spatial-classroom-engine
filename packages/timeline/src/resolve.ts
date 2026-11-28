@@ -219,8 +219,8 @@ function entryBody(cue: Cue, atMs: number): Omit<TimelineEntry, 'approximate'> {
     primitive: cue.primitive,
     // The primitive's registry track, not the cue's own `track` field: the cue
     // sheet also admits board and audio, which TimelineEntry does not, and this
-    // lookup is total over the closed nine. Whether the two agree is a
-    // scene-aware rule for T12/T15, not the resolver's.
+    // lookup is total over the closed nine. Whether the two agree is T12's
+    // `checkOrdering` rule (§10.4), not the resolver's.
     track: primitiveRegistry[cue.primitive].track,
     durationMs: durationOf(cue),
   };
