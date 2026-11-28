@@ -80,7 +80,7 @@ Q7 and Q12 are deliberately unanswered. They are deferred scope, not decisions, 
 
 Amended 2026-11-27 after T1: T1 shipped as its own pull request (`3e977bd`), not inside a bundled first pull request. The six-pull-request sketch in the original sign-off is superseded by the one-task-per-pull-request rule above. The phase scope and every definition of done are unchanged.
 
-`LessonPlan` gains `topic: TopicRef` at T6 under ADR 0016, together with the discriminated-union change to `Cue.params`. Until T6 the current shape — `evidencePacketId` and no `topic` — is not final.
+`LessonPlan` gained `topic: TopicRef` at T6B under ADR 0016, together with the discriminated-union change to `Cue.params`. The pre-T6B shape — `evidencePacketId` and no `topic` — is superseded; the P1 shape is now final.
 
 T6B follows T7 on purpose. The discriminated union for `Cue.params` needs all nine core parameter schemas to be exhaustive: camera and teacher land in T6, scene, light and learner in T7. T6B then carries ADR 0016, the union, `LessonPlan.topic: TopicRef`, and the cue-sheet test updates. This ordering is deliberate; do not renumber it to look tidy.
 
